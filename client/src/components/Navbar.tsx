@@ -19,7 +19,9 @@ import {
   Radar,
   Sun,
   Moon,
+  LogOut,
 } from 'lucide-react';
+import { AuthUser } from '../services/authApi';
 
 interface NavbarProps {
   projects: ProjectIntelligenceData[];
@@ -30,6 +32,8 @@ interface NavbarProps {
   onDeleteProject?: (id: string) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onSignOut?: () => void;
+  user?: AuthUser | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -41,6 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onDeleteProject,
   activeTab,
   setActiveTab,
+  onSignOut,
+  user,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const healthRating = currentProject?.healthMetrics?.healthRating || 'Healthy';
@@ -168,6 +174,33 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Download className="w-3.5 h-3.5 text-[var(--accent)]" />
               <span className="hidden sm:inline">Export Report</span>
             </button>
+
+            {/* User avatar + Sign Out */}
+            {user && (
+              <div className="flex items-center gap-2 ml-1">
+                {/* Avatar initial */}
+                <div
+                  title={user.name}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 select-none"
+                  style={{
+                    background: 'var(--accent)',
+                    color: '#000',
+                    boxShadow: '0 0 12px rgba(214,255,63,0.3)',
+                  }}
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                {/* Sign Out */}
+                <button
+                  id="navbar-signout-btn"
+                  onClick={onSignOut}
+                  title="Sign Out"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-rose-950/60 text-[var(--text-4)] hover:text-rose-400 border border-[var(--border-2)] hover:border-rose-500/40 cursor-pointer transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

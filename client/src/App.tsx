@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ProjectIntelligenceData, Project, ProjectDocument, SoftwareRequirement, ImplementationProfile, ChatMessage } from './types';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
+import { SignInPage } from './components/SignInPage';
+import { SignUpPage } from './components/SignUpPage';
 import { Dashboard } from './components/Dashboard';
 import { TraceabilityMatrix } from './components/TraceabilityMatrix';
 import { CoverageAnalyzer } from './components/CoverageAnalyzer';
@@ -19,9 +21,14 @@ import {
 } from './services/api';
 import { AppShellSkeleton } from './components/ui/Skeleton';
 import { useToast } from './contexts/ToastContext';
+import { useAuth } from './contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
+
+type AppView = 'landing' | 'signin' | 'signup' | 'app';
 
 export default function App() {
-  const [showLanding, setShowLanding] = useState(true);
+  const { user, isLoading: authLoading, signOut } = useAuth();
+  const [view, setView] = useState<AppView>('landing');
   const [projectsData, setProjectsData] = useState<ProjectIntelligenceData[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -30,6 +37,14 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  // Sync view with auth state once AuthContext finishes restoring the session
+  useEffect(() => {
+    if (authLoading) return; // wait for session restore
+    if (user && view !== 'app') {
+      setView('app'); // already logged in — go straight to app
+    }
+  }, [authLoading, user]);
 
   // Load persisted projects from MongoDB (via the Express API) on first mount.
   useEffect(() => {
@@ -72,7 +87,7 @@ export default function App() {
   };
 
   // Persist a snapshot of the current project to MongoDB.
-  const persistProject = async (projectId: string, snapshot: Partial<ProjectIntelligenceData>) => {
+  const persistProject = async (projectId: string, snapshot: Partial<Omit<ProjectIntelligenceData, 'project'>> & { project?: Partial<ProjectIntelligenceData['project']> }) => {
     try {
       await saveProjectApi(projectId, snapshot);
     } catch (err) {
@@ -278,8 +293,62 @@ export default function App() {
     );
   };
 
-  if (showLanding) {
-    return <LandingPage onGetStarted={() => setShowLanding(false)} />;
+  // Sign out handler — clears auth and returns to landing
+  const handleSignOut = () => {
+    signOut();
+    setView('landing');
+    // Reset project state so next login starts fresh
+    setProjectsData([]);
+    setCurrentProjectId('');
+    setActiveTab('dashboard');
+  };
+
+  // ── Auth is still being restored from localStorage — show spinner ──
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
+      </div>
+    );
+  }
+
+  // ── Public pages ────────────────────────────────────────────────────
+  if (view === 'landing') {
+    return (
+      <LandingPage
+        onGetStarted={() => setView('signin')}
+        onSignIn={() => setView('signin')}
+        onSignUp={() => setView('signup')}
+      />
+    );
+  }
+
+  if (view === 'signin') {
+    return (
+      <SignInPage
+        onNavigateSignUp={() => setView('signup')}
+        onNavigateLanding={() => setView('landing')}
+      />
+    );
+  }
+
+  if (view === 'signup') {
+    return (
+      <SignUpPage
+        onNavigateSignIn={() => setView('signin')}
+        onNavigateLanding={() => setView('landing')}
+      />
+    );
+  }
+
+  // ── Protected: redirect unauthenticated users to sign in ────────────
+  if (!user) {
+    return (
+      <SignInPage
+        onNavigateSignUp={() => setView('signup')}
+        onNavigateLanding={() => setView('landing')}
+      />
+    );
   }
 
   if (isLoading) {
@@ -304,6 +373,8 @@ export default function App() {
         onDeleteProject={handleDeleteProject}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onSignOut={handleSignOut}
+        user={user}
       />
 
       {/* Main View Container */}

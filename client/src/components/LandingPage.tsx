@@ -20,6 +20,8 @@ import { useTheme } from '../contexts/ThemeContext';
 
 interface LandingPageProps {
   onGetStarted: () => void;
+  onSignIn?: () => void;
+  onSignUp?: () => void;
 }
 
 // Scoped design tokens for the landing page — computed based on active theme
@@ -99,7 +101,7 @@ const STEPS = [
   },
 ];
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onSignUp }) => {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
   const tokens = getTokens(isDark);
@@ -188,8 +190,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
+            {/* Sign In link */}
             <button
-              onClick={onGetStarted}
+              id="landing-signin-btn"
+              onClick={onSignIn || onGetStarted}
+              className="text-[13px] font-semibold cursor-pointer transition-colors hover:text-[var(--lens-accent)]"
+              style={{ color: 'var(--lens-text-dim)' }}
+            >
+              Sign In
+            </button>
+
+            <button
+              id="landing-getstarted-btn"
+              onClick={onSignUp || onGetStarted}
               className="px-4 py-2 rounded-xl bg-[var(--lens-accent)] text-black text-[13px] font-bold hover:brightness-110 transition-all shadow-[0_0_20px_-4px_var(--lens-accent)] cursor-pointer"
             >
               Get Started

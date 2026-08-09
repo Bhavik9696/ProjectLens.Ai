@@ -4,6 +4,7 @@ import express from 'express';
 
 import { connectDB } from './config/db.js';
 import { seedIfEmpty } from './config/seed.js';
+import authRoutes from './routes/auth.js';
 import copilotRoutes from './routes/copilot.js';
 import documentsRoutes from './routes/documents.js';
 import engineRoutes from './routes/engine.js';
@@ -26,6 +27,9 @@ app.use(express.json({ limit: '10mb' }));
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Authentication (signup / signin / me)
+app.use('/api/auth', authRoutes);
 
 // Step 1 & persistence: project CRUD backed by MongoDB
 app.use('/api/projects', projectsRoutes);
