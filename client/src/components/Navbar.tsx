@@ -1,6 +1,7 @@
 import React from 'react';
 import { ProjectIntelligenceData } from '../types';
 import { ProjectSearch } from './ProjectSearch';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   Plus,
   FileText,
@@ -16,6 +17,8 @@ import {
   Flame,
   Trash2,
   Radar,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -39,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
 }) => {
+  const { theme, toggleTheme } = useTheme();
   const healthRating = currentProject?.healthMetrics?.healthRating || 'Healthy';
   const overallScore = currentProject?.healthMetrics?.overallScore ?? 0;
 
@@ -116,6 +120,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Search / Jump to Project */}
             <ProjectSearch projects={projects} currentProject={currentProject} onSelectProject={onSelectProject} />
 
+            {/* Theme Toggle */}
+            <button
+              id="theme-toggle-btn"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+              aria-label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-[var(--surface-3)] text-[var(--text-4)] hover:text-[var(--accent)] border border-[var(--border-2)] hover:border-[var(--accent)]/40 hover:shadow-[0_0_12px_rgba(214,255,63,0.15)] cursor-pointer flex-shrink-0"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5" />
+              ) : (
+                <Moon className="w-3.5 h-3.5" />
+              )}
+            </button>
+
             {/* Delete Current Project */}
             {currentProject && onDeleteProject && (
               <button
@@ -125,7 +144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                 }}
                 title="Delete Project"
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-rose-950/60 text-[var(--text-4)] hover:text-rose-400 border border-[var(--border-2)] hover:border-rose-500/40 transition-colors cursor-pointer"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-rose-950/60 text-[var(--text-4)] hover:text-rose-400 border border-[var(--border-2)] hover:border-rose-500/40 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

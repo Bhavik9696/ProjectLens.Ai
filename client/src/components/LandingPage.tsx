@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   ArrowRight,
   Play,
@@ -13,25 +13,40 @@ import {
   Sparkles,
   CheckCircle2,
   ShieldCheck,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface LandingPageProps {
   onGetStarted: () => void;
 }
 
-// Scoped design tokens for the landing page only — kept local via inline
-// CSS custom properties so the rest of the app's existing sky/slate theme
-// (index.css) is left completely untouched.
-const tokens: React.CSSProperties = {
-  ['--lens-bg' as any]: '#0a0a0a',
-  ['--lens-panel' as any]: '#131313',
-  ['--lens-panel-2' as any]: '#17170e',
-  ['--lens-border' as any]: 'rgba(255,255,255,0.09)',
-  ['--lens-accent' as any]: '#d6ff3f',
-  ['--lens-accent-dim' as any]: '#9cb82e',
-  ['--lens-text' as any]: '#f5f5f1',
-  ['--lens-text-dim' as any]: '#9a9a92',
-};
+// Scoped design tokens for the landing page — computed based on active theme
+// so both dark and light modes work correctly.
+function getTokens(isDark: boolean): React.CSSProperties {
+  return isDark
+    ? {
+        ['--lens-bg' as any]:          '#0a0a0a',
+        ['--lens-panel' as any]:       '#131313',
+        ['--lens-panel-2' as any]:     '#17170e',
+        ['--lens-border' as any]:      'rgba(255,255,255,0.09)',
+        ['--lens-accent' as any]:      '#d6ff3f',
+        ['--lens-accent-dim' as any]:  '#9cb82e',
+        ['--lens-text' as any]:        '#f5f5f1',
+        ['--lens-text-dim' as any]:    '#9a9a92',
+      }
+    : {
+        ['--lens-bg' as any]:          '#f5f5f0',
+        ['--lens-panel' as any]:       '#ffffff',
+        ['--lens-panel-2' as any]:     '#fffef5',
+        ['--lens-border' as any]:      'rgba(0,0,0,0.10)',
+        ['--lens-accent' as any]:      '#8aaa00',
+        ['--lens-accent-dim' as any]:  '#6a8800',
+        ['--lens-text' as any]:        '#111110',
+        ['--lens-text-dim' as any]:    '#666660',
+      };
+}
 
 const NAV_LINKS = ['Product', 'Features', 'How it Works', 'Docs'];
 
@@ -85,6 +100,10 @@ const STEPS = [
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+  const tokens = getTokens(isDark);
+
   return (
     <div style={tokens} className="min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)]">
       {/* ---------------------------------------------------------------- */}
@@ -107,12 +126,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             ))}
           </div>
 
-          <button
-            onClick={onGetStarted}
-            className="px-4 py-2 rounded-xl bg-[var(--lens-accent)] text-black text-[13px] font-bold hover:brightness-110 transition-all shadow-[0_0_20px_-4px_var(--lens-accent)] cursor-pointer"
-          >
-            Get Started
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <button
+              id="landing-theme-toggle-btn"
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+              aria-label={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--lens-panel)] hover:bg-[var(--lens-panel-2)] text-[var(--lens-text-dim)] hover:text-[var(--lens-accent)] border border-[var(--lens-border)] hover:border-[var(--lens-accent)]/40 transition-colors cursor-pointer flex-shrink-0"
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            <button
+              onClick={onGetStarted}
+              className="px-4 py-2 rounded-xl bg-[var(--lens-accent)] text-black text-[13px] font-bold hover:brightness-110 transition-all shadow-[0_0_20px_-4px_var(--lens-accent)] cursor-pointer"
+            >
+              Get Started
+            </button>
+          </div>
         </nav>
       </div>
 
