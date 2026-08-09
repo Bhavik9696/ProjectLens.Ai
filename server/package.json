@@ -1,0 +1,22 @@
+{
+  "name": "projectlens-ai-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ProjectLens AI - Express + MongoDB backend (MERN)",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "seed": "node config/seed.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
