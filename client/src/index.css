@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* ── Landing Page design tokens — single source of truth ── */
+    --bg:         #0a0a0a;
+    --panel:      #131313;
+    --panel-2:    #17170e;
+    --surface-3:  #1c1c1c;
+    --surface-4:  #111111;
+    --surface-5:  #242424;
+
+    --border:     rgba(255,255,255,0.09);
+    --border-1:   rgba(255,255,255,0.09);
+    --border-2:   rgba(255,255,255,0.14);
+
+    --text-1:     #f5f5f1;
+    --text-2:     #e8e8e4;
+    --text-3:     #c8c8c0;
+    --text-4:     #9a9a92;
+    --text-5:     #6a6a62;
+    --text-6:     #4a4a44;
+    --text-dim:   #9a9a92;
+
+    /* Electric yellow-green accent — Landing Page signature colour */
+    --accent:     #d6ff3f;
+    --accent-dim: #9cb82e;
+    --accent-glow: rgba(214,255,63,0.15);
+    --border-glow: rgba(214,255,63,0.12);
+
+    /* Semantic status — keep readable against dark backgrounds */
+    --success:    #10b981;
+    --warning:    #f59e0b;
+    --danger:     #ef4444;
+
+    --glow-opacity: 0.08;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text-1);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-image:
+      radial-gradient(ellipse at 50% 0%,  rgba(214,255,63,var(--glow-opacity)) 0%, transparent 60%),
+      radial-gradient(circle  at 100% 100%, rgba(156,184,46,calc(var(--glow-opacity)*0.6)) 0%, transparent 50%);
+    background-attachment: fixed;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* ── Panel / Card Base ──────────────────────────────────────────── */
+.cyber-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cyber-card:hover {
+  border-color: rgba(214, 255, 63, 0.25);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5), 0 0 18px rgba(214, 255, 63, 0.06);
+}
+
+/* ── AI Analysis Engine Panel ───────────────────────────────────── */
+.ai-copilot-panel {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--panel) 95%, transparent),
+    color-mix(in srgb, var(--surface-3) 90%, transparent));
+  border: 1px solid rgba(214,255,63,0.25);
+  border-radius: 0.75rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 24px rgba(214, 255, 63, 0.06);
+}
+
+.ai-copilot-panel::before {
+  content: 'AI ANALYSIS ENGINE';
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--accent);
+  color: #0a0a0a;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-bottom-left-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: var(--bg); }
+::-webkit-scrollbar-thumb  {
+  background: var(--surface-3);
+  border-radius: 3px;
+  border: 1px solid rgba(214, 255, 63, 0.10);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+
+/* ── Skeleton shimmer ───────────────────────────────────────────── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.9; }
+}
+.skeleton {
+  background: var(--surface-3);
+  border-radius: 0.5rem;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
