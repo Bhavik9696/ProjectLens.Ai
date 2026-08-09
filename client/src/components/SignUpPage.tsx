@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Radar, Eye, EyeOff, Sun, Moon, ArrowRight, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Radar, Eye, EyeOff, Sun, Moon, ArrowRight, ArrowLeft, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -79,6 +79,18 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateSignIn, onNavi
         <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: 700, height: 400, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(214,255,63,0.07) 0%, transparent 70%)', filter: 'blur(40px)' }} />
         <div style={{ position: 'absolute', bottom: 0, right: 0, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(156,184,46,0.05) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       </div>
+
+      {/* Back to Landing — top left */}
+      <button
+        id="signup-back-btn"
+        onClick={onNavigateLanding}
+        title="Back to Home"
+        className="fixed top-5 left-5 z-50 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer transition-all hover:border-[var(--accent)]/40 hover:text-[var(--accent)] group"
+        style={{ background: 'var(--panel)', borderColor: 'var(--border-2)', color: 'var(--text-4)' }}
+      >
+        <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+        <span className="text-xs font-semibold">Home</span>
+      </button>
 
       {/* Theme toggle */}
       <button

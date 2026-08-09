@@ -4,6 +4,8 @@ import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
 import { SignInPage } from './components/SignInPage';
 import { SignUpPage } from './components/SignUpPage';
+import { ForgotPasswordPage } from './components/ForgotPasswordPage';
+import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { Dashboard } from './components/Dashboard';
 import { TraceabilityMatrix } from './components/TraceabilityMatrix';
 import { CoverageAnalyzer } from './components/CoverageAnalyzer';
@@ -24,11 +26,12 @@ import { useToast } from './contexts/ToastContext';
 import { useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
-type AppView = 'landing' | 'signin' | 'signup' | 'app';
+type AppView = 'landing' | 'signin' | 'signup' | 'forgot-password' | 'reset-password' | 'app';
 
 export default function App() {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const [view, setView] = useState<AppView>('landing');
+  const [resetToken, setResetToken] = useState<string>('');
   const [projectsData, setProjectsData] = useState<ProjectIntelligenceData[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -37,6 +40,18 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  // On mount: check for ?token= in URL — navigate to reset-password view
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      setResetToken(token);
+      setView('reset-password');
+      // Remove the token from the URL bar without a page reload
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Sync view with auth state once AuthContext finishes restoring the session
   useEffect(() => {
@@ -328,6 +343,7 @@ export default function App() {
       <SignInPage
         onNavigateSignUp={() => setView('signup')}
         onNavigateLanding={() => setView('landing')}
+        onNavigateForgotPassword={() => setView('forgot-password')}
       />
     );
   }
@@ -337,6 +353,25 @@ export default function App() {
       <SignUpPage
         onNavigateSignIn={() => setView('signin')}
         onNavigateLanding={() => setView('landing')}
+      />
+    );
+  }
+
+  if (view === 'forgot-password') {
+    return (
+      <ForgotPasswordPage
+        onNavigateSignIn={() => setView('signin')}
+        onNavigateLanding={() => setView('landing')}
+      />
+    );
+  }
+
+  if (view === 'reset-password') {
+    return (
+      <ResetPasswordPage
+        token={resetToken}
+        onNavigateSignIn={() => setView('signin')}
+        onNavigateForgotPassword={() => setView('forgot-password')}
       />
     );
   }

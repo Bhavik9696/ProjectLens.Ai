@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Radar, Eye, EyeOff, Sun, Moon, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Radar, Eye, EyeOff, Sun, Moon, ArrowRight, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SignInPageProps {
   onNavigateSignUp: () => void;
   onNavigateLanding: () => void;
+  onNavigateForgotPassword?: () => void;
 }
 
 function validateEmail(email: string) {
   return /^\S+@\S+\.\S+$/.test(email);
 }
 
-export const SignInPage: React.FC<SignInPageProps> = ({ onNavigateSignUp, onNavigateLanding }) => {
+export const SignInPage: React.FC<SignInPageProps> = ({ onNavigateSignUp, onNavigateLanding, onNavigateForgotPassword }) => {
   const { signIn } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -56,6 +57,18 @@ export const SignInPage: React.FC<SignInPageProps> = ({ onNavigateSignUp, onNavi
         <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: 700, height: 400, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(214,255,63,0.07) 0%, transparent 70%)', filter: 'blur(40px)' }} />
         <div style={{ position: 'absolute', bottom: '0', right: '0', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(156,184,46,0.05) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       </div>
+
+      {/* Back to Landing — top left */}
+      <button
+        id="signin-back-btn"
+        onClick={onNavigateLanding}
+        title="Back to Home"
+        className="fixed top-5 left-5 z-50 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer transition-all hover:border-[var(--accent)]/40 hover:text-[var(--accent)] group"
+        style={{ background: 'var(--panel)', borderColor: 'var(--border-2)', color: 'var(--text-4)' }}
+      >
+        <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+        <span className="text-xs font-semibold">Home</span>
+      </button>
 
       {/* Theme toggle — top right */}
       <button
@@ -129,9 +142,22 @@ export const SignInPage: React.FC<SignInPageProps> = ({ onNavigateSignUp, onNavi
 
           {/* Password */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold" style={{ color: 'var(--text-3)' }}>
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold" style={{ color: 'var(--text-3)' }}>
+                Password
+              </label>
+              {onNavigateForgotPassword && (
+                <button
+                  type="button"
+                  id="forgot-password-link"
+                  onClick={onNavigateForgotPassword}
+                  className="text-xs font-semibold cursor-pointer hover:underline"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <input
                 type={showPass ? 'text' : 'password'}

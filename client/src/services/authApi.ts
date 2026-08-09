@@ -43,3 +43,17 @@ export async function getMeApi(token: string): Promise<{ user: AuthUser }> {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
   });
 }
+
+export async function forgotPasswordApi(email: string): Promise<{ message: string }> {
+  return authFetch('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPasswordApi(token: string, newPassword: string): Promise<{ message: string }> {
+  return authFetch('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
