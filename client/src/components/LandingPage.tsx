@@ -104,8 +104,58 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   const isDark = theme === 'dark';
   const tokens = getTokens(isDark);
 
+  // ── Cursor glow ──────────────────────────────────────────────────────
+  const glowRef = useRef<HTMLDivElement>(null);
+  const rafRef  = useRef<number>(0);
+
+  useEffect(() => {
+    // Disable on touch-only / coarse-pointer devices (mobile)
+    if (window.matchMedia('(hover: none)').matches) return;
+
+    const move = (e: MouseEvent) => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        if (!glowRef.current) return;
+        glowRef.current.style.transform =
+          `translate(${e.clientX - 300}px, ${e.clientY - 300}px)`;
+        glowRef.current.style.opacity = '1';
+      });
+    };
+
+    window.addEventListener('mousemove', move, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', move);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────
+
   return (
-    <div style={tokens} className="min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)]">
+    <div style={tokens} className="min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)] overflow-x-hidden">
+
+      {/* ── Cursor glow orb — fixed, behind everything, pointer-events off ── */}
+      <div
+        ref={glowRef}
+        aria-hidden="true"
+        style={{
+          position:     'fixed',
+          top:          0,
+          left:         0,
+          width:        600,
+          height:       600,
+          borderRadius: '50%',
+          background:   isDark
+            ? 'radial-gradient(circle, rgba(214,255,63,0.10) 0%, rgba(156,184,46,0.05) 40%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(138,170,0,0.08)  0%, rgba(100,130,0,0.04)  40%, transparent 70%)',
+          filter:        'blur(40px)',
+          pointerEvents: 'none',
+          zIndex:        0,
+          opacity:       0,
+          willChange:    'transform',
+          transition:    'transform 0.12s ease-out, opacity 0.4s ease',
+        }}
+      />
+
       {/* ---------------------------------------------------------------- */}
       {/* Nav                                                               */}
       {/* ---------------------------------------------------------------- */}
