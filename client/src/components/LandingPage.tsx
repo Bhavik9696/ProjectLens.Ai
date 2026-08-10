@@ -504,6 +504,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           <p className="text-center text-[12px] font-mono text-[var(--lens-text-dim)]/70 mt-3">
             First 2 projects free — no credit card required
           </p>
+          <div className="flex items-center justify-center gap-3 mt-2.5">
+            {(['🔐\u00a0Privacy-first', 'RAG-powered', 'Secrets redacted'] as const).map((item, i, arr) => (
+              <React.Fragment key={item}>
+                <span
+                  className="text-[11px] font-semibold tracking-wide"
+                  style={{ color: 'var(--lens-accent-dim)', opacity: 0.75 }}
+                >
+                  {item}
+                </span>
+                {i < arr.length - 1 && (
+                  <span className="text-[10px]" style={{ color: 'var(--lens-text-dim)', opacity: 0.35 }}>•</span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
 
           <div className="relative h-[260px] sm:h-[300px] mt-14 max-w-3xl mx-auto">
             <CoverageCard
