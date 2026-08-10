@@ -342,7 +342,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* ---------------------------------------------------------------- */}
       {/* Nav                                                               */}
       {/* ---------------------------------------------------------------- */}
-      <div className="px-3 sm:px-6 pt-4 sm:pt-5 sticky top-0 z-40">
+      <div className="hi-nav px-3 sm:px-6 pt-4 sm:pt-5 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto">
           {/* ── Nav bar row ── */}
           <nav
@@ -469,13 +469,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* Hero                                                              */}
       {/* ---------------------------------------------------------------- */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -top-24 -left-24 w-80 h-80 bg-[var(--lens-accent)]/10 blur-[100px] rounded-full" />
-        <div className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 bg-[var(--lens-accent)]/10 blur-[100px] rounded-full" />
+        <div className="hi-glow pointer-events-none absolute -top-24 -left-24 w-80 h-80 bg-[var(--lens-accent)]/10 blur-[100px] rounded-full" />
+        <div className="hi-glow pointer-events-none absolute -top-24 -right-24 w-80 h-80 bg-[var(--lens-accent)]/10 blur-[100px] rounded-full" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-10 relative">
           <div className="flex justify-center mb-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--lens-accent)]/30 bg-[var(--lens-accent)]/10 px-4 py-1.5 text-[12px] font-mono text-[var(--lens-accent)]">
+            <div className="hi-badge inline-flex items-center gap-2 rounded-full border border-[var(--lens-accent)]/30 bg-[var(--lens-accent)]/10 px-4 py-1.5 text-[12px] font-mono text-[var(--lens-accent)]">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--lens-accent)] opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--lens-accent)]" />
@@ -484,18 +484,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             </div>
           </div>
 
-          <h1 className="text-center font-extrabold tracking-tight leading-[1.05] text-[42px] sm:text-[56px] md:text-[64px]">
+          <h1 className="hi-h1 text-center font-extrabold tracking-tight leading-[1.05] text-[42px] sm:text-[56px] md:text-[64px]">
             Know What's Actually
             <br />
             <span className="text-[var(--lens-accent)]">Built</span>, Not Promised
           </h1>
 
-          <p className="max-w-xl mx-auto text-center mt-6 text-[15px] sm:text-base text-[var(--lens-text-dim)] leading-relaxed">
+          <p className="hi-desc max-w-xl mx-auto text-center mt-6 text-[15px] sm:text-base text-[var(--lens-text-dim)] leading-relaxed">
             ProjectLens AI compares your requirement documents against real GitHub code, so every
             status update is backed by evidence — not a guess.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-9">
+          <div className="hi-cta flex flex-col sm:flex-row items-center justify-center gap-4 mt-9">
             <button
               onClick={onGetStarted}
               className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[var(--lens-accent)] text-black font-bold text-sm hover:brightness-110 transition-all shadow-[0_0_30px_-6px_var(--lens-accent)] cursor-pointer"
@@ -513,10 +513,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               See Pricing
             </button>
           </div>
-          <p className="text-center text-[12px] font-mono text-[var(--lens-text-dim)]/70 mt-3">
+          <p className="hi-free text-center text-[12px] font-mono text-[var(--lens-text-dim)]/70 mt-3">
             First 2 projects free — no credit card required
           </p>
-          <div className="flex items-center justify-center gap-3 mt-2.5">
+          <div className="hi-trust flex items-center justify-center gap-3 mt-2.5">
             {(['🔐\u00a0Privacy-first', 'RAG-powered', 'Secrets redacted'] as const).map((item, i, arr) => (
               <React.Fragment key={item}>
                 <span
@@ -533,19 +533,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           </div>
 
           <div className="relative h-[260px] sm:h-[300px] mt-14 max-w-3xl mx-auto">
-            <CoverageCard
-              className="absolute left-0 sm:left-4 top-16 sm:top-20 hero-float-a w-[210px] sm:w-[240px]"
-              module="Authentication"
-              percent={62}
-              status="Partial"
-            />
-            <CoverageCard
-              className="absolute right-0 sm:right-4 top-0 hero-float-b w-[240px] sm:w-[270px]"
-              module="Payment Gateway"
-              percent={94}
-              status="Implemented"
-              elevated
-            />
+            {/* Card entrance wrapper A — handles opacity+Y; inner card handles rotation float */}
+            <div className="hi-card-a absolute left-0 sm:left-4 top-16 sm:top-20 w-[210px] sm:w-[240px]">
+              <CoverageCard
+                className="hero-float-a"
+                module="Authentication"
+                percent={62}
+                status="Partial"
+              />
+            </div>
+            {/* Card entrance wrapper B */}
+            <div className="hi-card-b absolute right-0 sm:right-4 top-0 w-[240px] sm:w-[270px]">
+              <CoverageCard
+                className="hero-float-b"
+                module="Payment Gateway"
+                percent={94}
+                status="Implemented"
+                elevated
+              />
+            </div>
           </div>
         </div>
       </section>

@@ -268,3 +268,53 @@
   .reveal, .reveal-fade, .reveal-eyebrow { opacity: 1 !important; animation: none !important; }
   .shimmer-border::before { animation: none; }
 }
+
+/* ── Hero page-load entrance animations ──────────────────────────── */
+@keyframes hi-down {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hi-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hi-up-sm {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+@keyframes hi-glow {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Each element starts fully transparent (opacity:0 in initial state).
+   animation-fill-mode: both keeps it hidden before delay fires. */
+.hi-nav   { opacity: 0; animation: hi-down   0.50s cubic-bezier(0.22,1,0.36,1) 0.00s both; }
+.hi-badge { opacity: 0; animation: hi-up     0.55s cubic-bezier(0.22,1,0.36,1) 0.12s both; }
+.hi-h1    { opacity: 0; animation: hi-up-sm  0.65s cubic-bezier(0.22,1,0.36,1) 0.28s both; }
+.hi-desc  { opacity: 0; animation: hi-up     0.55s cubic-bezier(0.22,1,0.36,1) 0.46s both; }
+.hi-cta   { opacity: 0; animation: hi-up     0.55s cubic-bezier(0.22,1,0.36,1) 0.60s both; }
+.hi-free  { opacity: 0; animation: hi-up     0.45s cubic-bezier(0.22,1,0.36,1) 0.74s both; }
+.hi-trust { opacity: 0; animation: hi-up     0.45s cubic-bezier(0.22,1,0.36,1) 0.84s both; }
+.hi-glow  { opacity: 0; animation: hi-glow   1.60s ease-out                    0.05s both; }
+
+/* Card entrance wrappers.  The wrapper handles opacity + Y entry;
+   the CoverageCard inside keeps the separate float animation. */
+.hi-card-a { opacity: 0; animation: hi-up 0.70s cubic-bezier(0.22,1,0.36,1) 0.96s both; }
+.hi-card-b { opacity: 0; animation: hi-up 0.70s cubic-bezier(0.22,1,0.36,1) 1.10s both; }
+
+/* Float animations: delay start until after entrance completes */
+.hero-float-a { animation: hero-float-a 7.5s ease-in-out 1.70s infinite; }
+.hero-float-b { animation: hero-float-b  10s ease-in-out 1.84s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hi-nav, .hi-badge, .hi-h1, .hi-desc, .hi-cta,
+  .hi-free, .hi-trust, .hi-glow, .hi-card-a, .hi-card-b {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+  .hero-float-a, .hero-float-b { animation: none !important; }
+}
