@@ -14,6 +14,7 @@ import { GitHubConnector } from './components/GitHubConnector';
 import { AICopilotChat } from './components/AICopilotChat';
 import { NewProjectModal } from './components/NewProjectModal';
 import { ReportGeneratorModal } from './components/ReportGeneratorModal';
+import { BuyCreditsModal } from './components/BuyCreditsModal';
 import {
   fetchProjectsApi,
   createProjectApi,
@@ -29,7 +30,7 @@ import { Loader2 } from 'lucide-react';
 type AppView = 'landing' | 'signin' | 'signup' | 'forgot-password' | 'reset-password' | 'app';
 
 export default function App() {
-  const { user, isLoading: authLoading, signOut } = useAuth();
+  const { user, isLoading: authLoading, signOut, refreshCredits } = useAuth();
   const [view, setView] = useState<AppView>('landing');
   const [resetToken, setResetToken] = useState<string>('');
   const [projectsData, setProjectsData] = useState<ProjectIntelligenceData[]>([]);
@@ -37,6 +38,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isBuyCreditsModalOpen, setIsBuyCreditsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -111,7 +113,7 @@ export default function App() {
     }
   };
 
-  // Step 1: Create New Project
+  // Step 1: Create New Project — credit gate is enforced server-side
   const handleCreateProject = async (draftProject: Project) => {
     try {
       const created = await createProjectApi({
@@ -125,9 +127,18 @@ export default function App() {
       setCurrentProjectId(created.project.id);
       setActiveTab('documents');
       showToast(`Project "${created.project.name}" created`, 'success');
-    } catch (err) {
+      // Refresh credit state after a project is consumed
+      await refreshCredits();
+    } catch (err: any) {
       console.error('Failed to create project', err);
-      showToast('Could not create the project. Try again.', 'error');
+      if (err.status === 402) {
+        // No credits remaining — open the Buy Credits modal
+        showToast('No credits remaining. Purchase credits to create more projects.', 'error');
+        setIsNewProjectModalOpen(false);
+        setIsBuyCreditsModalOpen(true);
+      } else {
+        showToast('Could not create the project. Try again.', 'error');
+      }
     }
   };
 
@@ -257,6 +268,7 @@ export default function App() {
 
     showToast(removedDoc ? `"${removedDoc.name}" removed` : 'Document removed', 'info');
   };
+
   const handleAnalyzeRepo = async (profile: ImplementationProfile) => {
     if (!currentProjectData) return;
     try {
@@ -390,6 +402,9 @@ export default function App() {
     return <AppShellSkeleton />;
   }
 
+  const freeRemaining = user.freeProjectsRemaining ?? 2;
+  const paidCreds     = user.paidCredits           ?? 0;
+
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-1)] font-sans selection:bg-[var(--accent)]/25 selection:text-[var(--accent)] antialiased">
       {loadError && (
@@ -409,13 +424,20 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onSignOut={handleSignOut}
+        onBuyCredits={() => setIsBuyCreditsModalOpen(true)}
         user={user}
       />
 
       {/* Main View Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'dashboard' && (
-          <Dashboard data={currentProjectData} onNavigateTab={setActiveTab} />
+          <Dashboard
+            data={currentProjectData}
+            onNavigateTab={setActiveTab}
+            freeProjectsRemaining={freeRemaining}
+            paidCredits={paidCreds}
+            onBuyCredits={() => setIsBuyCreditsModalOpen(true)}
+          />
         )}
 
         {/* BUG FIX: these tabs used to dereference currentProjectData directly
@@ -476,6 +498,15 @@ export default function App() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         data={currentProjectData}
+      />
+
+      {/* Buy Credits Modal */}
+      <BuyCreditsModal
+        isOpen={isBuyCreditsModalOpen}
+        onClose={() => setIsBuyCreditsModalOpen(false)}
+        onSuccess={async () => {
+          await refreshCredits();
+        }}
       />
     </div>
   );

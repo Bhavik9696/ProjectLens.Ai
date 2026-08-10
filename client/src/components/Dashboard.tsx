@@ -26,14 +26,23 @@ import {
   FileText,
   Bot,
   Tag,
+  Zap,
+  Gift,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface DashboardProps {
   data: ProjectIntelligenceData | null;
   onNavigateTab: (tab: string) => void;
+  freeProjectsRemaining?: number;
+  paidCredits?: number;
+  onBuyCredits?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeProjectsRemaining = 2, paidCredits = 0, onBuyCredits }) => {
+  const FREE_TOTAL = 2;
+  const hasCredits = freeProjectsRemaining > 0 || paidCredits > 0;
+  const outOfCredits = freeProjectsRemaining === 0 && paidCredits === 0;
   if (!data) {
     return (
       <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-12 text-center max-w-xl mx-auto space-y-5 my-12 shadow-2xl">
@@ -81,6 +90,81 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab }) => 
 
   return (
     <div className="space-y-6">
+      {/* ── Credit Status Banner ─────────────────────────────────────────── */}
+      <div
+        className="rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden"
+        style={{
+          background:  outOfCredits ? 'rgba(244,63,94,0.04)' : 'var(--panel)',
+          borderColor: outOfCredits ? 'rgba(244,63,94,0.3)'  : 'var(--border)',
+          boxShadow:   outOfCredits ? '0 0 30px rgba(244,63,94,0.06)' : 'none',
+        }}
+      >
+        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full pointer-events-none"
+          style={{ background: outOfCredits ? 'radial-gradient(circle, rgba(244,63,94,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(214,255,63,0.06) 0%, transparent 70%)', filter: 'blur(20px)' }} />
+
+        <div className="flex items-center gap-4 relative z-10">
+          {/* Free projects counter */}
+          <div className="flex flex-col items-center justify-center w-16 h-16 rounded-xl border flex-shrink-0"
+            style={{ background: 'var(--bg)', borderColor: 'var(--border-2)' }}>
+            <Gift className="w-4 h-4 mb-1" style={{ color: 'var(--accent)' }} />
+            <span className="text-lg font-extrabold font-mono leading-none" style={{ color: freeProjectsRemaining > 0 ? 'var(--accent)' : 'var(--text-4)' }}>
+              {FREE_TOTAL - freeProjectsRemaining}/{FREE_TOTAL}
+            </span>
+            <span className="text-[9px] font-mono uppercase" style={{ color: 'var(--text-5)' }}>Free Used</span>
+          </div>
+
+          {/* Paid credits counter */}
+          <div className="flex flex-col items-center justify-center w-16 h-16 rounded-xl border flex-shrink-0"
+            style={{ background: 'var(--bg)', borderColor: 'var(--border-2)' }}>
+            <Zap className="w-4 h-4 mb-1" style={{ color: paidCredits > 0 ? 'var(--accent)' : 'var(--text-5)' }} />
+            <span className="text-lg font-extrabold font-mono leading-none" style={{ color: paidCredits > 0 ? 'var(--text-1)' : 'var(--text-5)' }}>
+              {paidCredits}
+            </span>
+            <span className="text-[9px] font-mono uppercase" style={{ color: 'var(--text-5)' }}>Paid Credits</span>
+          </div>
+
+          <div className="space-y-0.5">
+            <p className="text-sm font-bold" style={{ color: outOfCredits ? '#f87171' : 'var(--text-1)' }}>
+              {outOfCredits
+                ? 'No project credits remaining'
+                : freeProjectsRemaining > 0
+                  ? `${freeProjectsRemaining} free project${freeProjectsRemaining > 1 ? 's' : ''} remaining`
+                  : `${paidCredits} paid credit${paidCredits > 1 ? 's' : ''} remaining`
+              }
+            </p>
+            <p className="text-xs" style={{ color: 'var(--text-4)' }}>
+              {outOfCredits
+                ? 'Your free projects are complete. Purchase project credits to continue.'
+                : 'Free projects are consumed before paid credits.'
+              }
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 relative z-10 flex-shrink-0">
+          {outOfCredits && (
+            <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border"
+              style={{ background: 'rgba(244,63,94,0.08)', borderColor: 'rgba(244,63,94,0.3)', color: '#f87171' }}>
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Out of credits
+            </div>
+          )}
+          <button
+            id="dashboard-buy-credits-btn"
+            onClick={onBuyCredits}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer"
+            style={{
+              background:  outOfCredits ? '#f43f5e' : 'var(--accent)',
+              color:       '#000',
+              boxShadow:   outOfCredits ? '0 0 20px rgba(244,63,94,0.35)' : '0 0 20px rgba(214,255,63,0.25)',
+            }}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Buy Credits
+          </button>
+        </div>
+      </div>
+      {/* ─────────────────────────────────────────────────────────────────── */}
       {/* Top Project Overview Banner */}
       <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6 shadow-[0_0_30px_rgba(0,0,0,0.4)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
         {/* Accent glow */}

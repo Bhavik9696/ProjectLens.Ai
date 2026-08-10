@@ -22,6 +22,21 @@ const userSchema = new mongoose.Schema(
       required:  [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
     },
+
+    // ── Credit / Freemium System ────────────────────────────────────────
+    // Each new user starts with 2 free project slots.
+    // These are consumed BEFORE paid credits when a project is created.
+    freeProjectsRemaining: {
+      type:    Number,
+      default: 2,
+      min:     0,
+    },
+    // Paid credits purchased via Razorpay (1 credit = 1 project).
+    paidCredits: {
+      type:    Number,
+      default: 0,
+      min:     0,
+    },
   },
   { timestamps: true }
 );
@@ -39,7 +54,7 @@ userSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-// Never expose the password hash in JSON responses
+// Never expose the password hash in JSON responses; always include credit counters
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

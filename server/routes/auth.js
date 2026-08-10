@@ -7,6 +7,17 @@ import { sendPasswordResetEmail } from '../services/email.js';
 
 const router = Router();
 
+/** Helper: build the safe public user object returned in every auth response */
+function publicUser(user) {
+  return {
+    id:                    user._id,
+    name:                  user.name,
+    email:                 user.email,
+    freeProjectsRemaining: user.freeProjectsRemaining ?? 2,
+    paidCredits:           user.paidCredits           ?? 0,
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* POST /api/auth/signup                                               */
 /* ------------------------------------------------------------------ */
@@ -29,10 +40,7 @@ router.post('/signup', async (req, res) => {
     const user = await User.create({ name: name.trim(), email, password });
     const token = signToken(user._id);
 
-    res.status(201).json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email },
-    });
+    res.status(201).json({ token, user: publicUser(user) });
   } catch (err) {
     console.error('[Auth] Signup error:', err.message);
     if (err.code === 11000) {
@@ -65,10 +73,7 @@ router.post('/signin', async (req, res) => {
 
     const token = signToken(user._id);
 
-    res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email },
-    });
+    res.json({ token, user: publicUser(user) });
   } catch (err) {
     console.error('[Auth] Signin error:', err.message);
     res.status(500).json({ error: 'Sign in failed. Please try again.' });
@@ -79,8 +84,7 @@ router.post('/signin', async (req, res) => {
 /* GET /api/auth/me  (validates token, returns current user)          */
 /* ------------------------------------------------------------------ */
 router.get('/me', requireAuth, (req, res) => {
-  const { _id: id, name, email } = req.user;
-  res.json({ user: { id, name, email } });
+  res.json({ user: publicUser(req.user) });
 });
 
 /* ------------------------------------------------------------------ */

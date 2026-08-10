@@ -20,6 +20,8 @@ import {
   Sun,
   Moon,
   LogOut,
+  Zap,
+  Gift,
 } from 'lucide-react';
 import { AuthUser } from '../services/authApi';
 
@@ -33,6 +35,7 @@ interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onSignOut?: () => void;
+  onBuyCredits?: () => void;
   user?: AuthUser | null;
 }
 
@@ -46,11 +49,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onSignOut,
+  onBuyCredits,
   user,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const healthRating = currentProject?.healthMetrics?.healthRating || 'Healthy';
   const overallScore = currentProject?.healthMetrics?.overallScore ?? 0;
+
+  const freeRemaining = user?.freeProjectsRemaining ?? 0;
+  const paidCredits   = user?.paidCredits ?? 0;
+  const hasCredits    = freeRemaining > 0 || paidCredits > 0;
 
   const getHealthBadge = () => {
     if (!currentProject) {
@@ -85,12 +93,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const navTabs = [
-    { id: 'dashboard', label: 'Dashboard',              icon: BarChart3 },
+    { id: 'dashboard', label: 'Dashboard',               icon: BarChart3 },
     { id: 'rtm',       label: 'Traceability Matrix (RTM)', icon: Table     },
-    { id: 'coverage',  label: 'Coverage Engine',        icon: Cpu       },
-    { id: 'documents', label: 'SRS & Documents',        icon: FileText  },
-    { id: 'github',    label: 'GitHub Repository',      icon: GitBranch },
-    { id: 'copilot',   label: 'AI Copilot',             icon: Bot       },
+    { id: 'coverage',  label: 'Coverage Engine',         icon: Cpu       },
+    { id: 'documents', label: 'SRS & Documents',         icon: FileText  },
+    { id: 'github',    label: 'GitHub Repository',       icon: GitBranch },
+    { id: 'copilot',   label: 'AI Copilot',              icon: Bot       },
   ];
 
   return (
@@ -119,12 +127,43 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Project Selector & Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Health Badge */}
             <div className="hidden lg:block">{getHealthBadge()}</div>
 
             {/* Search / Jump to Project */}
             <ProjectSearch projects={projects} currentProject={currentProject} onSelectProject={onSelectProject} />
+
+            {/* ── Buy Credits Button (always visible when authenticated) ── */}
+            {user && (
+              <button
+                id="navbar-buy-credits-btn"
+                onClick={onBuyCredits}
+                title="Buy Project Credits"
+                className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer relative group"
+                style={{
+                  background:  hasCredits ? 'rgba(214,255,63,0.06)' : 'rgba(244,63,94,0.08)',
+                  borderColor: hasCredits ? 'rgba(214,255,63,0.3)'  : 'rgba(244,63,94,0.4)',
+                  color:       hasCredits ? 'var(--accent)'         : '#f87171',
+                  boxShadow:   hasCredits ? '0 0 12px rgba(214,255,63,0.08)' : '0 0 12px rgba(244,63,94,0.12)',
+                }}
+              >
+                <Zap className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline">Buy Credits</span>
+                {/* Credit counter pill */}
+                <span
+                  className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full ml-0.5"
+                  style={{
+                    background: 'rgba(0,0,0,0.25)',
+                    color: hasCredits ? 'var(--accent)' : '#f87171',
+                  }}
+                >
+                  <Gift className="w-2.5 h-2.5" />{freeRemaining}
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  {paidCredits}
+                </span>
+              </button>
+            )}
 
             {/* Theme Toggle */}
             <button

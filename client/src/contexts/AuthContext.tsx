@@ -10,13 +10,19 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => void;
+  /** Sync latest credit counters from the server into the user object */
+  refreshCredits: () => Promise<void>;
+  /** Optimistically update credit counters after a project is created */
+  deductCredit: (type: 'free' | 'paid') => void;
+  /** Optimistically add paid credits after a successful payment */
+  addPaidCredits: (count: number) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser]       = useState<AuthUser | null>(null);
-  const [token, setToken]     = useState<string | null>(null);
+  const [user, setUser]           = useState<AuthUser | null>(null);
+  const [token, setToken]         = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true); // true until session is restored
 
   // On mount: attempt to restore session from localStorage
@@ -60,8 +66,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   }, []);
 
+  /** Re-fetch the latest credit state from the server */
+  const refreshCredits = useCallback(async () => {
+    const stored = window.localStorage.getItem(TOKEN_KEY);
+    if (!stored) return;
+    try {
+      const { user: u } = await getMeApi(stored);
+      setUser(u);
+    } catch {
+      // Silently ignore — stale state is better than crashing
+    }
+  }, []);
+
+  /** Optimistically decrement a credit after a project is created */
+  const deductCredit = useCallback((type: 'free' | 'paid') => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      if (type === 'free') {
+        return { ...prev, freeProjectsRemaining: Math.max(0, prev.freeProjectsRemaining - 1) };
+      }
+      return { ...prev, paidCredits: Math.max(0, prev.paidCredits - 1) };
+    });
+  }, []);
+
+  /** Optimistically add paid credits after a successful payment */
+  const addPaidCredits = useCallback((count: number) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return { ...prev, paidCredits: prev.paidCredits + count };
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, token, isLoading, signIn, signUp, signOut, refreshCredits, deductCredit, addPaidCredits }}>
       {children}
     </AuthContext.Provider>
   );

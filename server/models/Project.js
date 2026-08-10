@@ -196,6 +196,8 @@ const ProjectSchema = new Schema(
     // client-side (proj-<timestamp>) as the Mongo _id, so no id-mapping
     // layer is needed between frontend and database.
     _id: { type: String },
+    // Owner reference — populated by the credit-gated POST /api/projects route.
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     name: { type: String, required: true },
     description: { type: String, default: '' },
     deadline: { type: String, default: '' },

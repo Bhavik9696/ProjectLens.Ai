@@ -10,6 +10,7 @@ import documentsRoutes from './routes/documents.js';
 import engineRoutes from './routes/engine.js';
 import githubRoutes from './routes/github.js';
 import projectsRoutes from './routes/projects.js';
+import paymentsRoutes from './routes/payments.js';
 
 dotenv.config();
 
@@ -45,6 +46,9 @@ app.use('/api/engine', engineRoutes);
 
 // Step 11 & 12: Gemini AI RAG copilot
 app.use('/api/copilot', copilotRoutes);
+
+// Payments & credits (Razorpay Test Mode)
+app.use('/api/payments', paymentsRoutes);
 
 // 404 fallback for unknown API routes
 app.use('/api', (_req, res) => {

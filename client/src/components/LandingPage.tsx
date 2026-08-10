@@ -50,7 +50,7 @@ function getTokens(isDark: boolean): React.CSSProperties {
       };
 }
 
-const NAV_LINKS = ['Product', 'Features', 'How it Works', 'Docs'];
+const NAV_LINKS = ['Features', 'How It Works'];
 
 const INTEGRATIONS = [
   { icon: Github, label: 'GitHub' },

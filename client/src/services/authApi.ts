@@ -17,6 +17,8 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  freeProjectsRemaining: number;
+  paidCredits: number;
 }
 
 export interface AuthResponse {
