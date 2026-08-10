@@ -191,6 +191,12 @@ export interface RequirementAnalysisResult {
   negativeEvidence?: string[];
 }
 
+export interface ScopeCreepItem {
+  feature: string;
+  keyword: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
 export interface ProjectHealthMetrics {
   requirementCoverage: number; // 40% weight
   implementationCoverage: number; // 30% weight
@@ -200,6 +206,7 @@ export interface ProjectHealthMetrics {
   healthRating: ProjectHealthStatus;
   highRiskModules: string[];
   keyRiskFactors: string[];
+  scopeCreep?: ScopeCreepItem[];
 }
 
 export interface Citation {

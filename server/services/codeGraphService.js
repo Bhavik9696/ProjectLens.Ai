@@ -8,6 +8,10 @@
  *
  * Output is attached to ImplementationProfile.codeGraph and consumed
  * by engineService.js for multi-method evidence retrieval.
+ *
+ * FIX (v2): Tightened keyword extraction, raised minimum score threshold,
+ * and added whole-segment path matching to prevent generic files (e.g.
+ * Aside.jsx) from appearing as evidence for unrelated requirements.
  */
 
 // ── Secret / sensitive file exclusion ────────────────────────────────────────
@@ -39,7 +43,6 @@ function classifyFile(filePath) {
   const lower = filePath.toLowerCase();
   const parts = lower.split('/');
   const fileName = parts[parts.length - 1];
-  const ext = fileName.split('.').pop();
 
   // Binary / non-code files — skip
   if (/\.(png|jpg|jpeg|gif|svg|ico|webp|pdf|woff|woff2|ttf|eot|mp4|mp3|zip|tar|gz|bin|exe|dll|so|dylib)$/.test(lower)) {
@@ -128,7 +131,7 @@ function classifyFile(filePath) {
   ) return 'component';
 
   // Hooks
-  if (lower.includes('/hooks/') || fileName.startsWith('use') && /\.(ts|js|tsx|jsx)$/.test(lower)) {
+  if (lower.includes('/hooks/') || (fileName.startsWith('use') && /\.(ts|js|tsx|jsx)$/.test(lower))) {
     return 'hook';
   }
 
@@ -153,16 +156,10 @@ function classifyFile(filePath) {
 }
 
 // ── Route path extraction ─────────────────────────────────────────────────────
-/**
- * Try to infer API route paths from file paths.
- * e.g. "server/routes/auth.js" → "auth"
- *      "api/users/index.js"    → "users"
- */
 function inferRoutePaths(filePath) {
   const lower = filePath.toLowerCase();
   const fileName = lower.split('/').pop().replace(/\.(js|ts|jsx|tsx)$/, '');
 
-  // Common route file name → probable route paths
   const routeMap = {
     auth: ['/api/auth/login', '/api/auth/signup', '/api/auth/logout', '/api/auth/reset-password'],
     authentication: ['/api/auth/login', '/api/auth/register'],
@@ -187,6 +184,8 @@ function inferRoutePaths(filePath) {
     report: ['/api/reports'],
     reports: ['/api/reports'],
     upload: ['/api/upload'],
+    document: ['/api/documents', '/api/documents/parse'],
+    documents: ['/api/documents', '/api/documents/parse'],
     search: ['/api/search'],
     chat: ['/api/chat'],
     message: ['/api/messages'],
@@ -200,18 +199,16 @@ function inferRoutePaths(filePath) {
     reviews: ['/api/reviews'],
     comment: ['/api/comments'],
     comments: ['/api/comments'],
+    reset: ['/api/auth/reset-password', '/api/auth/forgot-password'],
+    forgot: ['/api/auth/forgot-password'],
+    register: ['/api/auth/register', '/api/auth/signup'],
+    login: ['/api/auth/login', '/api/auth/signin'],
   };
 
   return routeMap[fileName] || [`/api/${fileName}`];
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-/**
- * Build a lightweight code graph from a file tree.
- *
- * @param {string[]} fileTree - Array of file paths from GitHub API
- * @returns {CodeGraph}
- */
 export function buildCodeGraph(fileTree) {
   const graph = {
     routes: [],
@@ -227,9 +224,7 @@ export function buildCodeGraph(fileTree) {
     stateFiles: [],
     configFiles: [],
     allSourceFiles: [],
-    // Inferred API route paths (not file paths, but URL paths)
     inferredApiRoutes: [],
-    // File-type counts for display
     summary: {
       totalFiles: 0,
       routeFiles: 0,
@@ -304,25 +299,29 @@ export function buildCodeGraph(fileTree) {
   return graph;
 }
 
-/**
- * Check whether a given requirement's keyword set matches known test files.
- * Returns the matching test files.
- */
 export function findTestsForRequirement(requirement, codeGraph) {
   if (!codeGraph || !codeGraph.tests || codeGraph.tests.length === 0) return [];
 
   const keywords = extractSearchKeywords(requirement);
   return codeGraph.tests.filter(testFile => {
-    const lower = testFile.toLowerCase();
-    return keywords.some(kw => lower.includes(kw));
+    const segments = testFile.toLowerCase().split(/[\/\-_.]/);
+    return keywords.some(kw => kw.length >= 4 && segments.some(seg => seg.includes(kw)));
   });
 }
 
+// ── Keyword extraction (v2 — tightened) ──────────────────────────────────────
 /**
- * Extract a broad keyword set for searching (used by engine and retrieval).
+ * Extract meaningful domain-specific keywords from a requirement.
+ *
+ * KEY FIX: The previous stop-words list wrongly excluded domain words like
+ * "service", "controller", "component", "implement" which are essential for
+ * matching code files. The new list only removes truly generic English words
+ * that cannot match meaningful filenames.
  */
 export function extractSearchKeywords(requirement) {
-  const STOP_WORDS = new Set([
+  // These are ONLY generic English function words that have zero chance
+  // of being a useful filename segment. Domain words are intentionally kept.
+  const HARD_STOP_WORDS = new Set([
     'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had',
     'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his',
     'how', 'its', 'let', 'may', 'new', 'now', 'old', 'see', 'two', 'way',
@@ -331,13 +330,15 @@ export function extractSearchKeywords(requirement) {
     'than', 'then', 'here', 'into', 'some', 'what', 'also', 'back', 'just',
     'know', 'most', 'need', 'only', 'over', 'such', 'take', 'them', 'well',
     'their', 'there', 'these', 'those', 'which', 'while', 'shall', 'must',
-    'should', 'allow', 'enable', 'provide', 'system', 'user', 'able', 'upon',
-    'more', 'very', 'data', 'make', 'work', 'used', 'both', 'based', 'using',
-    'given', 'about', 'include', 'general', 'requirements', 'requirement',
-    'feature', 'function', 'module', 'component', 'handler', 'between',
-    'related', 'other', 'different', 'specific', 'support', 'every', 'after',
-    'before', 'through', 'during', 'application', 'software', 'section',
-    'service', 'controller', 'interface', 'implement', 'implementation',
+    'should', 'allow', 'enable', 'provide', 'upon', 'more', 'very', 'make',
+    'work', 'used', 'both', 'based', 'using', 'given', 'about', 'include',
+    'general', 'requirements', 'requirement', 'between', 'related', 'other',
+    'different', 'specific', 'every', 'after', 'before', 'through', 'during',
+    'each', 'such', 'very', 'also', 'even', 'many', 'well', 'then', 'than',
+    'into', 'over', 'back', 'from', 'with', 'same', 'when', 'where', 'were',
+    'been', 'being', 'have', 'having', 'does', 'doing', 'done', 'make',
+    'makes', 'made', 'take', 'takes', 'taken', 'come', 'comes', 'came',
+    'give', 'gives', 'given', 'show', 'shows', 'showed', 'shown',
   ]);
 
   const text = [
@@ -348,95 +349,193 @@ export function extractSearchKeywords(requirement) {
     requirement.object || '',
     ...(requirement.acceptanceCriteria || []),
     ...(requirement.expectedComponents || []),
+    requirement.module || '',
   ].join(' ');
 
   const words = text
     .toLowerCase()
+    // camelCase split: "authController" → "auth controller"
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+    .filter(w => w.length >= 3 && !HARD_STOP_WORDS.has(w));
 
+  // Deduplicate and return
   return [...new Set(words)];
 }
 
+// ── Relevance scoring (v2 — tightened) ───────────────────────────────────────
 /**
- * Score a single file path against a keyword set.
- * Returns a numeric relevance score.
+ * Score a single file path against a keyword set using path SEGMENT matching.
+ *
+ * KEY FIX: The previous implementation split the file path into a single
+ * string and checked if any keyword appeared as a substring. This caused
+ * false positives (e.g. "ai" matching "Aside.jsx", "side" matching many
+ * unrelated files). Now we split on path separators and check each segment
+ * independently, requiring the segment to CONTAIN the keyword as a
+ * meaningful part (not just as scattered characters).
+ *
+ * Scoring:
+ *   +3 filename stem matches keyword exactly
+ *   +2 filename stem contains keyword (length >= 4)
+ *   +1 directory segment contains keyword (length >= 4)
+ *   +1 bonus for each additional keyword matched (up to 3 bonus)
+ *
+ * Minimum threshold: 2.0 (set in retrieveRelevantFiles)
  */
 export function scoreFileRelevance(filePath, keywords) {
-  const lower = filePath.toLowerCase();
+  if (!keywords || keywords.length === 0) return 0;
+
+  const parts = filePath.toLowerCase().split('/');
+  const rawFileName = parts[parts.length - 1];
+  // Strip extension for matching
+  const fileNameStem = rawFileName.replace(/\.(js|ts|jsx|tsx|py|java|rb|go|cs|vue|svelte|html|css|scss|md)$/i, '');
+  const dirParts = parts.slice(0, -1);
+
   let score = 0;
+  let matchedKeywords = 0;
+
   for (const kw of keywords) {
-    if (lower.includes(kw)) score += 1;
-    // Bonus for appearing in file name (not just directory)
-    const fileName = lower.split('/').pop();
-    if (fileName && fileName.includes(kw)) score += 0.5;
+    if (kw.length < 3) continue;
+
+    let kwMatched = false;
+
+    // Exact filename stem match (highest value)
+    if (fileNameStem === kw) {
+      score += 3;
+      kwMatched = true;
+    }
+    // Filename stem contains keyword (require length >= 4 to reduce noise)
+    else if (kw.length >= 4 && fileNameStem.includes(kw)) {
+      score += 2;
+      kwMatched = true;
+    }
+    // Keyword is a whole segment or meaningful sub-word of filename stem (length >= 4)
+    else if (kw.length >= 4 && dirParts.some(d => d.includes(kw))) {
+      score += 1;
+      kwMatched = true;
+    }
+    // Short keyword (3 chars): only match if it's an EXACT directory segment
+    else if (kw.length === 3 && dirParts.some(d => d === kw)) {
+      score += 0.5;
+      kwMatched = true;
+    }
+
+    if (kwMatched) matchedKeywords++;
   }
+
+  // Bonus for matching multiple distinct keywords (rewards more specific matches)
+  if (matchedKeywords >= 2) score += Math.min(matchedKeywords - 1, 3) * 0.5;
+
   return score;
 }
 
+// ── Multi-method retrieval (v2) ───────────────────────────────────────────────
 /**
  * Retrieve top-N most relevant files for a requirement.
- * Uses multi-method: keyword scoring + type-aware boosting.
+ *
+ * KEY FIX: Minimum score threshold raised from > 0 to >= 2.0 to eliminate
+ * accidental low-quality matches. Files scoring below the threshold are
+ * excluded entirely rather than being returned as weak evidence.
+ *
+ * Added: type-aware boosting that promotes backend files (routes, controllers,
+ * services, models) for backend requirements and frontend files for UI
+ * requirements, so requirements are matched to the right layer.
  */
 export function retrieveRelevantFiles(requirement, fileTree, codeGraph, topN = 20) {
   const keywords = extractSearchKeywords(requirement);
   if (keywords.length === 0) return [];
 
-  // Score all non-excluded files
+  const titleLower = (requirement.title || '').toLowerCase();
+  const descLower = (requirement.description || '').toLowerCase();
+  const actorLower = (requirement.actor || '').toLowerCase();
+  const combined = titleLower + ' ' + descLower + ' ' + actorLower;
+
+  // Detect requirement domain to prioritize file types
+  const isFrontend = /\b(ui|interface|page|form|component|display|render|visual|react|vue|angular|screen|view|button|modal|widget)\b/.test(combined);
+  const isBackend = /\b(api|route|endpoint|server|database|model|schema|controller|middleware|jwt|token|session|auth|backend)\b/.test(combined);
+  const isAuth = /\b(auth|login|signup|register|password|session|jwt|oauth|logout)\b/.test(combined);
+  const isPayment = /\b(payment|checkout|order|billing|invoice|stripe|paypal|razorpay|purchase)\b/.test(combined);
+  const isUpload = /\b(upload|file|document|attachment|image|pdf|csv)\b/.test(combined);
+  const isNotification = /\b(notification|email|sms|push|alert|notify|mail)\b/.test(combined);
+  const isAdmin = /\b(admin|role|permission|authorize|privilege|rbac)\b/.test(combined);
+
+  const MIN_SCORE = 2.0; // FIX: Minimum relevance threshold — no accidental matches
+
   const scored = fileTree
     .filter(f => !isExcluded(f))
     .map(filePath => {
       let score = scoreFileRelevance(filePath, keywords);
+      if (score === 0) return { filePath, score: 0, type: 'source' };
 
-      // Type-aware boosts
       const type = classifyFile(filePath);
-      if (type === 'test') score *= 0.8; // tests are secondary evidence
-      if (type === 'config') score *= 0.3;
-      if (type === 'asset') score = 0;
+      const lowerPath = filePath.toLowerCase();
+
+      // ── Type-aware boosts ────────────────────────────────────────────────────
+      // Always boost implementation-critical types
+      if (type === 'route') score *= 1.8;
+      else if (type === 'controller') score *= 1.6;
+      else if (type === 'service') score *= 1.5;
+      else if (type === 'model') score *= 1.4;
+      else if (type === 'middleware') score *= 1.3;
+      else if (type === 'page') score *= 1.2;
+      else if (type === 'component') score *= 1.1;
+      else if (type === 'test') score *= 0.7; // Tests are secondary
+      else if (type === 'config') score *= 0.2; // Config rarely implements features
+      else if (type === 'asset') score = 0; // Assets never implement features
+
+      // Domain-specific boosts
+      if (isAuth && (lowerPath.includes('auth') || lowerPath.includes('login') || lowerPath.includes('session') || lowerPath.includes('jwt'))) score += 2;
+      if (isPayment && (lowerPath.includes('payment') || lowerPath.includes('checkout') || lowerPath.includes('order'))) score += 2;
+      if (isUpload && (lowerPath.includes('upload') || lowerPath.includes('document') || lowerPath.includes('file'))) score += 2;
+      if (isNotification && (lowerPath.includes('notif') || lowerPath.includes('email') || lowerPath.includes('mail'))) score += 2;
+      if (isAdmin && (lowerPath.includes('admin') || lowerPath.includes('role') || lowerPath.includes('permission'))) score += 2;
+
+      // Layer alignment boost
+      if (isBackend && !isFrontend && ['route', 'controller', 'service', 'model', 'middleware'].includes(type)) score += 1;
+      if (isFrontend && !isBackend && ['component', 'page', 'hook'].includes(type)) score += 1;
 
       return { filePath, score, type };
     })
-    .filter(x => x.score > 0)
+    .filter(x => x.score >= MIN_SCORE) // FIX: Only return genuinely relevant files
     .sort((a, b) => b.score - a.score);
 
   return scored.slice(0, topN);
 }
 
-/**
- * Detect negative evidence — things that SHOULD exist for a requirement
- * but are NOT found in the file tree.
- */
+// ── Negative evidence detection ───────────────────────────────────────────────
 export function detectNegativeEvidence(requirement, fileTree, codeGraph) {
   const negatives = [];
   const keywords = extractSearchKeywords(requirement);
   const allFilesLower = fileTree.map(f => f.toLowerCase());
   const title = (requirement.title || '').toLowerCase();
   const desc = (requirement.description || '').toLowerCase();
+  const combined = title + ' ' + desc;
 
-  // Auth-related requirements — check for missing security artifacts
-  if (
-    keywords.some(k => ['auth', 'login', 'password', 'session', 'token', 'jwt', 'register', 'signup'].includes(k)) ||
-    title.includes('auth') || title.includes('login')
-  ) {
-    if (!allFilesLower.some(f => f.includes('auth') || f.includes('jwt') || f.includes('token'))) {
+  // Auth-related requirements
+  if (/\b(auth|login|password|session|token|jwt|register|signup)\b/.test(combined)) {
+    if (!allFilesLower.some(f => f.includes('auth') || f.includes('jwt') || f.includes('token') || f.includes('session'))) {
       negatives.push('No authentication/JWT token handling files found');
     }
     if (!allFilesLower.some(f => f.includes('middleware') || f.includes('guard') || f.includes('protect'))) {
       negatives.push('No auth middleware or route protection files found');
     }
+    if (/reset|forgot/.test(combined)) {
+      if (!allFilesLower.some(f => f.includes('email') || f.includes('mail') || f.includes('smtp'))) {
+        negatives.push('Password reset requires email delivery but no email service files found');
+      }
+    }
   }
 
   // Admin / authorization requirements
-  if (keywords.some(k => ['admin', 'role', 'permission', 'authorization', 'privilege'].includes(k)) ||
-      title.includes('admin') || desc.includes('only admin')) {
+  if (/\b(admin|role|permission|authorization|privilege)\b/.test(combined)) {
     if (!allFilesLower.some(f => f.includes('admin') || f.includes('role') || f.includes('permission') || f.includes('guard') || f.includes('authorize'))) {
       negatives.push('No role-based access control (RBAC) or admin authorization files found');
     }
   }
 
-  // Payment requirements — check for webhook / confirmation
-  if (keywords.some(k => ['payment', 'checkout', 'order', 'billing', 'invoice', 'stripe', 'paypal', 'razorpay'].includes(k))) {
+  // Payment requirements
+  if (/\b(payment|checkout|order|billing|invoice|stripe|paypal|razorpay)\b/.test(combined)) {
     if (!allFilesLower.some(f => f.includes('payment') || f.includes('order') || f.includes('checkout') || f.includes('billing'))) {
       negatives.push('No payment processing files found');
     }
@@ -446,19 +545,19 @@ export function detectNegativeEvidence(requirement, fileTree, codeGraph) {
   }
 
   // Notification requirements
-  if (keywords.some(k => ['notification', 'email', 'sms', 'push', 'alert', 'notify'].includes(k))) {
+  if (/\b(notification|email|sms|push|alert|notify)\b/.test(combined)) {
     if (!allFilesLower.some(f => f.includes('notification') || f.includes('email') || f.includes('mail') || f.includes('sms'))) {
       negatives.push('No notification/email service files found');
     }
   }
 
-  // Test coverage — check if implementation exists but tests don't
+  // Test coverage check
   const relevantImpl = fileTree.filter(f => {
     if (isExcluded(f) || classifyFile(f) === 'test') return false;
-    return keywords.some(kw => f.toLowerCase().includes(kw));
+    return keywords.some(kw => kw.length >= 4 && f.toLowerCase().includes(kw));
   });
   const relevantTests = (codeGraph?.tests || []).filter(f =>
-    keywords.some(kw => f.toLowerCase().includes(kw))
+    keywords.some(kw => kw.length >= 4 && f.toLowerCase().includes(kw))
   );
   if (relevantImpl.length > 0 && relevantTests.length === 0) {
     negatives.push(`Implementation found (${relevantImpl.length} file(s)) but no test files detected for this requirement`);
@@ -466,7 +565,7 @@ export function detectNegativeEvidence(requirement, fileTree, codeGraph) {
 
   // Validation / input sanitization
   if (
-    keywords.some(k => ['form', 'input', 'validation', 'validate', 'register', 'submit', 'upload'].includes(k)) ||
+    /\b(form|input|validation|validate|register|submit|upload)\b/.test(combined) ||
     (requirement.acceptanceCriteria || []).some(c => c.toLowerCase().includes('valid'))
   ) {
     if (!allFilesLower.some(f => f.includes('valid') || f.includes('schema') || f.includes('joi') || f.includes('zod') || f.includes('yup'))) {
@@ -477,9 +576,7 @@ export function detectNegativeEvidence(requirement, fileTree, codeGraph) {
   return negatives;
 }
 
-/**
- * Redact secrets from a text string before sending to external AI.
- */
+// ── Secret redaction ──────────────────────────────────────────────────────────
 export function redactSecrets(text) {
   return text
     .replace(/\b(API[_-]?KEY|SECRET[_-]?KEY|ACCESS[_-]?TOKEN|PRIVATE[_-]?KEY|PASSWORD|PASSWD|PWD|JWT[_-]?SECRET|DATABASE[_-]?URL|MONGODB[_-]?URI|REDIS[_-]?URL|STRIPE[_-]?KEY|RAZORPAY[_-]?KEY|AWS[_-]?SECRET|SENDGRID[_-]?KEY)\s*[=:]\s*\S+/gi, '[REDACTED]')

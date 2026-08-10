@@ -179,6 +179,30 @@ export function extractActorActionObject(title = '', description = '') {
   return { actor, action, object: obj };
 }
 
+/**
+ * Derive a meaningful module name from a section heading line.
+ * Avoids generic placeholders like "General Requirements".
+ */
+function deriveMeaningfulModule(line, documentName) {
+  const clean = line
+    .replace(/^[\s#*\-•0-9.]+/, '')
+    .replace(/[:\-#]/g, '')
+    .trim();
+
+  if (!clean || clean.length < 3) {
+    // Fall back to document name without extension
+    return documentName.replace(/\.[^/.]+$/, '').replace(/[_\-]/g, ' ').trim() || 'Core Features';
+  }
+
+  // If the line is just a generic phrase, use document name
+  const genericPhrases = /^(general|overview|introduction|scope|purpose|background|summary|abstract|contents|index|preamble|foreword|preface|notes?|remarks?)$/i;
+  if (genericPhrases.test(clean)) {
+    return documentName.replace(/\.[^/.]+$/, '').replace(/[_\-]/g, ' ').trim() || 'Core Features';
+  }
+
+  return clean.substring(0, 50);
+}
+
 export function extractRequirementsHeuristically(documentName, content) {
   const reqs = [];
   const lines = content
@@ -186,7 +210,9 @@ export function extractRequirementsHeuristically(documentName, content) {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  let currentModule = 'General Requirements';
+  // Derive default module from document name instead of "General Requirements"
+  const docBaseName = documentName.replace(/\.[^/.]+$/, '').replace(/[_\-]/g, ' ').trim();
+  let currentModule = docBaseName || 'Core Features';
   let reqCounter = 1;
 
   for (let i = 0; i < lines.length; i++) {
@@ -197,7 +223,7 @@ export function extractRequirementsHeuristically(documentName, content) {
       (/^[A-Z][A-Za-z0-9\s]{2,35}:$/.test(line) && !line.toLowerCase().includes('http')) ||
       /^#{1,3}\s+(.+)/.test(line)
     ) {
-      currentModule = line.replace(/[:\-#]/g, '').trim();
+      currentModule = deriveMeaningfulModule(line, documentName);
       continue;
     }
 
@@ -277,8 +303,13 @@ export function extractRequirementsHeuristically(documentName, content) {
 
     if (paragraphs.length > 0) {
       paragraphs.slice(0, 8).forEach((para, idx) => {
-        const titleLine = para.split(/[.\n]/)[0].trim().substring(0, 60);
-        const title = titleLine || `Specification Requirement ${idx + 1}`;
+        // Extract a meaningful title: prefer the first sentence, strip boilerplate verbs
+        const firstSentence = para.split(/[.\n]/)[0].trim();
+        const cleanTitle = firstSentence
+          .replace(/^(the system shall|the system should|the application shall|users? (shall|should|must|can)|it (shall|should|must))/i, '')
+          .trim()
+          .substring(0, 60);
+        const title = cleanTitle.length > 5 ? cleanTitle : (docBaseName ? `${docBaseName} Requirement ${idx + 1}` : `Requirement ${idx + 1}`);
 
         const words = para
           .replace(/[^a-zA-Z0-9\s]/g, '')

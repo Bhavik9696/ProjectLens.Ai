@@ -198,6 +198,7 @@ const ProjectHealthMetricsSchema = new Schema(
     healthRating: { type: String, default: 'Healthy' },
     highRiskModules: [String],
     keyRiskFactors: [String],
+    scopeCreep: { type: mongoose.Schema.Types.Mixed, default: [] },
   },
   { _id: false }
 );
