@@ -1,13 +1,23 @@
 // Thin wrappers over the base apiFetch for auth endpoints.
 // We call /api/auth directly — no auth token needed for signup/signin.
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// In dev, VITE_API_URL=http://localhost:5000 (see client/.env).
+// In production, set VITE_API_URL=https://projectlens-ai.onrender.com in Vercel env vars.
+// IMPORTANT: fallback must be an explicit origin — never empty string.
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 async function authFetch(path: string, options?: RequestInit) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+  } catch {
+    throw new Error(
+      'Unable to reach the ProjectLens server. Please check your connection and try again.'
+    );
+  }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `Request failed: ${res.status}`);
   return body;

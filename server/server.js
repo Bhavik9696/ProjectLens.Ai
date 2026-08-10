@@ -17,12 +17,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Production frontend origins — hardcoded so they work on Render even if
+// the env vars are not set in the dashboard (server/.env is gitignored).
+const PRODUCTION_ORIGINS = [
+  'https://project-lens-ai-kappa.vercel.app',
+];
+
 const allowedOrigins = [
-  // CLIENT_ORIGIN: comma-separated list for local/CI overrides
+  ...PRODUCTION_ORIGINS,
+  // CLIENT_ORIGIN: comma-separated list; add extra origins via Render env vars
   ...(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
     .split(',')
     .map((o) => o.trim()),
-  // CLIENT_URL: single production frontend URL set in Render/Vercel env vars
+  // CLIENT_URL: optional single override (e.g. custom domain)
   ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL.trim()] : []),
   'http://localhost:5174',  // Vite fallback port when 5173 is taken
   'http://localhost:5175',  // extra fallback

@@ -7,9 +7,11 @@ import {
   SoftwareRequirement,
 } from '../types';
 
-// In dev, Vite proxies /api -> the Express server (see vite.config.ts).
-// In production, set VITE_API_URL to the deployed API origin.
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// In dev, VITE_API_URL=http://localhost:5000 (see client/.env).
+// In production, set VITE_API_URL=https://projectlens-ai.onrender.com in Vercel env vars.
+// IMPORTANT: fallback must be an explicit origin — never empty string — so that
+// fetch calls always resolve to the Express backend, not the Vercel CDN.
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const TOKEN_KEY = 'projectlens-token';
 
 function getToken(): string | null {
@@ -22,13 +24,24 @@ function authHeaders(): Record<string, string> {
 }
 
 async function apiFetch(path: string, options?: RequestInit) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      ...options,
+    });
+  } catch (networkErr) {
+    // Network-level failure (server unreachable, CORS preflight blocked, etc.)
+    const err: any = new Error(
+      'Unable to reach the ProjectLens server. Check your connection or try again later.'
+    );
+    err.status = 0;
+    err.body = {};
+    throw err;
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err: any = new Error(body.error || `Request failed: ${res.status}`);
