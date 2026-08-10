@@ -19,6 +19,8 @@ import {
   Gift,
   Star,
   Loader2,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -192,6 +194,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
   const tokens = getTokens(isDark);
   const [processingPack, setProcessingPack] = useState<string | null>(null);
   const [paymentMode, setPaymentMode]       = useState<'live' | 'simulation' | null>(null);
+  const [mobileNavOpen, setMobileNavOpen]   = useState(false);
 
   // ── Cursor glow ──────────────────────────────────────────────────────
   const glowRef = useRef<HTMLDivElement>(null);
@@ -321,58 +324,127 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* ---------------------------------------------------------------- */}
       {/* Nav                                                               */}
       {/* ---------------------------------------------------------------- */}
-      <div className="px-4 sm:px-6 pt-5 sticky top-0 z-40">
-        <nav className="max-w-6xl mx-auto flex items-center justify-between rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)]/90 backdrop-blur-md px-5 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--lens-accent)]/15 border border-[var(--lens-accent)]/30 flex items-center justify-center">
-              <Radar className="w-4 h-4 text-[var(--lens-accent)]" />
+      <div className="px-3 sm:px-6 pt-4 sm:pt-5 sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto">
+          {/* ── Nav bar row ── */}
+          <nav
+            className="flex items-center justify-between rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)]/95 backdrop-blur-md px-4 py-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+          >
+            {/* Brand */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-[var(--lens-accent)]/15 border border-[var(--lens-accent)]/30 flex items-center justify-center">
+                <Radar className="w-4 h-4 text-[var(--lens-accent)]" />
+              </div>
+              <span className="font-extrabold tracking-tight text-[15px]">ProjectLens<span className="text-[var(--lens-accent)]"> AI</span></span>
             </div>
-            <span className="font-extrabold tracking-tight text-[15px]">ProjectLens<span className="text-[var(--lens-accent)]"> AI</span></span>
-          </div>
 
-          <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-[var(--lens-text-dim)]">
-            {NAV_LINKS.map((link) => (
+            {/* Desktop centre links */}
+            <div className="hidden md:flex items-center gap-7 text-[13px] font-medium" style={{ color: 'var(--lens-text-dim)' }}>
+              {NAV_LINKS.map((link) => (
+                <button
+                  key={link.label}
+                  onClick={() => scrollTo(link.href.slice(1))}
+                  className="hover:text-[var(--lens-text)] transition-colors cursor-pointer bg-transparent border-0 p-0"
+                  style={{ color: 'inherit' }}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop right actions */}
+            <div className="hidden md:flex items-center gap-3">
               <button
-                key={link.label}
-                onClick={() => scrollTo(link.href.slice(1))}
-                className="hover:text-[var(--lens-text)] transition-colors cursor-pointer bg-transparent border-0 p-0"
-                style={{ color: 'inherit' }}
+                id="landing-theme-toggle-btn"
+                onClick={toggleTheme}
+                title={isDark ? 'Light Mode' : 'Dark Mode'}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--lens-panel)] hover:bg-[var(--lens-panel-2)] border border-[var(--lens-border)] hover:border-[var(--lens-accent)]/40 transition-colors cursor-pointer flex-shrink-0"
+                style={{ color: 'var(--lens-text-dim)' }}
               >
-                {link.label}
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
-            ))}
-          </div>
+              <button
+                id="landing-signin-btn"
+                onClick={onSignIn || onGetStarted}
+                className="text-[13px] font-semibold cursor-pointer transition-colors hover:text-[var(--lens-accent)]"
+                style={{ color: 'var(--lens-text-dim)' }}
+              >
+                Sign In
+              </button>
+              <button
+                id="landing-getstarted-btn"
+                onClick={onSignUp || onGetStarted}
+                className="px-4 py-2 rounded-xl bg-[var(--lens-accent)] text-black text-[13px] font-bold hover:brightness-110 transition-all shadow-[0_0_20px_-4px_var(--lens-accent)] cursor-pointer"
+              >
+                Get Started
+              </button>
+            </div>
 
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
-            <button
-              id="landing-theme-toggle-btn"
-              onClick={toggleTheme}
-              title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              aria-label={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--lens-panel)] hover:bg-[var(--lens-panel-2)] text-[var(--lens-text-dim)] hover:text-[var(--lens-accent)] border border-[var(--lens-border)] hover:border-[var(--lens-accent)]/40 transition-colors cursor-pointer flex-shrink-0"
-            >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
+            {/* Mobile: theme + hamburger only */}
+            <div className="flex md:hidden items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--lens-panel)] border border-[var(--lens-border)] cursor-pointer flex-shrink-0"
+                style={{ color: 'var(--lens-text-dim)' }}
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => setMobileNavOpen((o) => !o)}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--lens-panel)] border border-[var(--lens-border)] cursor-pointer flex-shrink-0"
+                style={{ color: 'var(--lens-text-dim)' }}
+                aria-label="Open menu"
+              >
+                {mobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
+            </div>
+          </nav>
 
-            <button
-              id="landing-signin-btn"
-              onClick={onSignIn || onGetStarted}
-              className="text-[13px] font-semibold cursor-pointer transition-colors hover:text-[var(--lens-accent)]"
-              style={{ color: 'var(--lens-text-dim)' }}
+          {/* ── Mobile dropdown ── */}
+          {mobileNavOpen && (
+            <div
+              className="md:hidden mt-2 rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)]/98 backdrop-blur-md p-4 space-y-1 shadow-xl"
             >
-              Sign In
-            </button>
+              {/* Nav links */}
+              {NAV_LINKS.map((link) => (
+                <button
+                  key={link.label}
+                  onClick={() => { scrollTo(link.href.slice(1)); setMobileNavOpen(false); }}
+                  className="w-full text-left px-4 py-3 rounded-xl text-[14px] font-semibold transition-colors cursor-pointer"
+                  style={{ color: 'var(--lens-text-dim)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--lens-accent)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--lens-text-dim)')}
+                >
+                  {link.label}
+                </button>
+              ))}
 
-            <button
-              id="landing-getstarted-btn"
-              onClick={onSignUp || onGetStarted}
-              className="px-4 py-2 rounded-xl bg-[var(--lens-accent)] text-black text-[13px] font-bold hover:brightness-110 transition-all shadow-[0_0_20px_-4px_var(--lens-accent)] cursor-pointer"
-            >
-              Get Started
-            </button>
-          </div>
-        </nav>
+              {/* Divider */}
+              <div className="h-px mx-1" style={{ background: 'var(--lens-border)' }} />
+
+              {/* Auth buttons */}
+              <button
+                onClick={() => { (onSignIn || onGetStarted)(); setMobileNavOpen(false); }}
+                className="w-full px-4 py-3 rounded-xl text-[14px] font-semibold text-center cursor-pointer transition-colors"
+                style={{ color: 'var(--lens-text-dim)' }}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { (onSignUp || onGetStarted)(); setMobileNavOpen(false); }}
+                className="w-full px-4 py-3 rounded-xl text-[14px] font-bold text-center cursor-pointer transition-all"
+                style={{
+                  background: 'var(--lens-accent)',
+                  color: '#000',
+                  boxShadow: '0 0 20px -4px var(--lens-accent)',
+                }}
+              >
+                Get Started — Free
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ---------------------------------------------------------------- */}
