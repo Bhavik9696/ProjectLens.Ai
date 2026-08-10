@@ -165,3 +165,106 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
 }
+
+/* ── Hero card float animations ─────────────────────────────────── */
+@keyframes hero-float-a {
+  0%   { transform: translateY(0px)   rotate(-6deg); }
+  50%  { transform: translateY(-8px)  rotate(-6.6deg); }
+  100% { transform: translateY(0px)   rotate(-6deg); }
+}
+
+@keyframes hero-float-b {
+  0%   { transform: translateY(0px)   rotate(3deg); }
+  50%  { transform: translateY(-8px)  rotate(3.5deg); }
+  100% { transform: translateY(0px)   rotate(3deg); }
+}
+
+.hero-float-a {
+  animation: hero-float-a 7.5s ease-in-out infinite;
+}
+
+.hero-float-b {
+  animation: hero-float-b 10s ease-in-out infinite;
+  animation-delay: 1.8s;
+}
+
+/* ── Scroll-reveal fade-up ───────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Base hidden state — applied before element enters viewport */
+.reveal {
+  opacity: 0;
+}
+
+/* Triggered by IntersectionObserver adding .in-view */
+.reveal.in-view {
+  animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.reveal-fade.in-view {
+  animation: fade-in 0.5s ease forwards;
+}
+
+/* Stagger delays for grid children */
+.reveal-d1 { animation-delay: 0.08s !important; }
+.reveal-d2 { animation-delay: 0.17s !important; }
+.reveal-d3 { animation-delay: 0.26s !important; }
+.reveal-d4 { animation-delay: 0.35s !important; }
+
+/* ── Shimmer border for popular pricing card ─────────────────────── */
+@keyframes border-shimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.shimmer-border {
+  position: relative;
+}
+
+.shimmer-border::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    var(--accent-dim) 0%,
+    var(--accent) 35%,
+    #fff8 55%,
+    var(--accent) 70%,
+    var(--accent-dim) 100%
+  );
+  background-size: 250% 250%;
+  animation: border-shimmer 4s ease-in-out infinite;
+  z-index: 0;
+}
+
+.shimmer-border > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Accent eyebrow slide-in ─────────────────────────────────────── */
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.reveal-eyebrow.in-view {
+  animation: slide-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-float-a, .hero-float-b { animation: none; }
+  .reveal, .reveal-fade, .reveal-eyebrow { opacity: 1 !important; animation: none !important; }
+  .shimmer-border::before { animation: none; }
+}

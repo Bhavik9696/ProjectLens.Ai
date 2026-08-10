@@ -220,6 +220,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
     return () => { window.removeEventListener('mousemove', move); cancelAnimationFrame(rafRef.current); };
   }, []);
 
+  // ── Scroll reveal (IntersectionObserver) ────────────────────────────
+  useEffect(() => {
+    const targets = document.querySelectorAll('.reveal, .reveal-fade, .reveal-eyebrow');
+    if (!targets.length) return;
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); } }),
+      { threshold: 0.12 }
+    );
+    targets.forEach(t => io.observe(t));
+    return () => io.disconnect();
+  }, []);
+
   // Fetch payment mode once (simulation vs live)
   useEffect(() => {
     fetch('/api/payments/mode')
@@ -522,13 +534,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
 
           <div className="relative h-[260px] sm:h-[300px] mt-14 max-w-3xl mx-auto">
             <CoverageCard
-              className="absolute left-0 sm:left-4 top-16 sm:top-20 -rotate-6 w-[210px] sm:w-[240px]"
+              className="absolute left-0 sm:left-4 top-16 sm:top-20 hero-float-a w-[210px] sm:w-[240px]"
               module="Authentication"
               percent={62}
               status="Partial"
             />
             <CoverageCard
-              className="absolute right-0 sm:right-4 top-0 rotate-3 w-[240px] sm:w-[270px]"
+              className="absolute right-0 sm:right-4 top-0 hero-float-b w-[240px] sm:w-[270px]"
               module="Payment Gateway"
               percent={94}
               status="Implemented"
@@ -564,17 +576,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* ---------------------------------------------------------------- */}
       <section id="features" className="max-w-6xl mx-auto px-4 sm:px-6 py-4 scroll-mt-24">
         <div className="max-w-xl mb-12">
-          <p className="text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">WHAT IT DOES</p>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+          <p className="reveal reveal-eyebrow text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">WHAT IT DOES</p>
+          <h2 className="reveal text-3xl sm:text-4xl font-extrabold tracking-tight reveal-d1">
             Evidence, not status meetings
           </h2>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {FEATURES.map(({ icon: Icon, title, desc }) => (
+          {FEATURES.map(({ icon: Icon, title, desc }, i) => (
             <div
               key={title}
-              className="rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)] p-5 hover:border-[var(--lens-accent)]/40 transition-colors"
+              className={`reveal reveal-d${i + 1} rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)] p-5 hover:border-[var(--lens-accent)]/40 transition-colors`}
             >
               <div className="w-10 h-10 rounded-xl bg-[var(--lens-accent)]/10 border border-[var(--lens-accent)]/25 flex items-center justify-center mb-4">
                 <Icon className="w-5 h-5 text-[var(--lens-accent)]" />
@@ -592,16 +604,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       <section id="privacy" className="max-w-6xl mx-auto px-4 sm:px-6 py-24 scroll-mt-24">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--lens-accent)]/30 bg-[var(--lens-accent)]/8 px-4 py-1.5 text-[11px] font-mono tracking-[0.18em] text-[var(--lens-accent)] mb-6">
+          <div className="reveal reveal-eyebrow inline-flex items-center gap-2 rounded-full border border-[var(--lens-accent)]/30 bg-[var(--lens-accent)]/8 px-4 py-1.5 text-[11px] font-mono tracking-[0.18em] text-[var(--lens-accent)] mb-6">
             <Lock className="w-3 h-3" />
             YOUR CODE. YOUR DATA. PROTECTED.
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-5">
+          <h2 className="reveal reveal-d1 text-3xl sm:text-4xl font-extrabold tracking-tight mb-5">
             Privacy-first AI analysis
             <br />
             <span className="text-[var(--lens-accent)]">for your codebase</span>
           </h2>
-          <p className="max-w-2xl mx-auto text-[15px] text-[var(--lens-text-dim)] leading-relaxed">
+          <p className="reveal reveal-d2 max-w-2xl mx-auto text-[15px] text-[var(--lens-text-dim)] leading-relaxed">
             ProjectLens AI uses privacy-first RAG to analyze only the repository evidence relevant to
             each requirement. Your entire codebase is never blindly sent to an AI model.
           </p>
@@ -720,10 +732,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 title: 'Minimum Necessary Data',
                 desc: 'Unrelated source code and sensitive repository data are excluded. Only the minimum evidence required to evaluate a requirement is processed.',
               },
-            ].map(({ Icon, title, desc }) => (
+            ].map(({ Icon, title, desc }, i) => (
               <div
                 key={title}
-                className="rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)] p-5 flex gap-4 hover:border-[var(--lens-accent)]/40 transition-colors group"
+                className={`reveal reveal-d${i + 1} rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)] p-5 flex gap-4 hover:border-[var(--lens-accent)]/40 transition-colors group`}
               >
                 <div className="w-10 h-10 rounded-xl bg-[var(--lens-accent)]/10 border border-[var(--lens-accent)]/25 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-[var(--lens-accent)]/20 transition-colors">
                   <Icon className="w-5 h-5 text-[var(--lens-accent)]" />
@@ -772,13 +784,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* ---------------------------------------------------------------- */}
       <section id="how-it-works" className="max-w-6xl mx-auto px-4 sm:px-6 py-24 scroll-mt-24">
         <div className="max-w-xl mb-12">
-          <p className="text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">THE FLOW</p>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Three steps to real coverage</h2>
+          <p className="reveal reveal-eyebrow text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">THE FLOW</p>
+          <h2 className="reveal reveal-d1 text-3xl sm:text-4xl font-extrabold tracking-tight">Three steps to real coverage</h2>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
           {STEPS.map((step, i) => (
-            <div key={step.n} className="relative">
+            <div key={step.n} className={`reveal reveal-d${i + 1} relative`}>
               <span className="font-mono text-[13px] text-[var(--lens-accent)]">{step.n}</span>
               <h3 className="text-lg font-bold mt-3 mb-2">{step.title}</h3>
               <p className="text-[13px] text-[var(--lens-text-dim)] leading-relaxed">{step.desc}</p>
@@ -841,18 +853,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
 
         {/* Pricing cards grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          {CREDIT_PACKS.map((pack) => {
+          {CREDIT_PACKS.map((pack, idx) => {
             const isLoading = processingPack === pack.id;
             return (
               <div
                 key={pack.id}
-                className="relative rounded-2xl border flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-1"
+                className={`reveal reveal-d${idx + 1} relative rounded-2xl border flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-1`}
                 style={{
                   background:   pack.popular
-                    ? (isDark ? 'linear-gradient(145deg,#161a0a,#101208)' : 'linear-gradient(145deg,#f8ffe0,#f0facc)')
+                    ? (isDark ? 'linear-gradient(145deg,#111409,#0d100a)' : 'linear-gradient(145deg,#f5fbda,#ecf5c4)')
                     : 'var(--lens-panel)',
-                  borderColor:  pack.popular ? 'rgba(214,255,63,0.5)' : 'var(--lens-border)',
-                  boxShadow:    pack.popular ? '0 0 40px -10px rgba(214,255,63,0.18)' : 'none',
+                  borderColor:  pack.popular ? 'rgba(214,255,63,0.32)' : 'var(--lens-border)',
+                  boxShadow:    pack.popular ? '0 0 28px -12px rgba(214,255,63,0.22)' : 'none',
                 }}
               >
                 {/* Popular ribbon */}
