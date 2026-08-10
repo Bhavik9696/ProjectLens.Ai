@@ -12,7 +12,7 @@ export default defineConfig(() => {
       },
     },
     server: {
-      port: 5173,
+      strictPort: false,
       proxy: {
         // Forward API calls to the Express + MongoDB backend during
         // development so the client can keep calling relative /api/* URLs.

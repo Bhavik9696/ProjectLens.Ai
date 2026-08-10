@@ -448,7 +448,10 @@ export default function App() {
         )}
 
         {activeTab === 'coverage' && (
-          <CoverageAnalyzer analysisResults={currentProjectData?.analysisResults || []} />
+          <CoverageAnalyzer
+            analysisResults={currentProjectData?.analysisResults || []}
+            projectId={currentProjectData?.project?.id}
+          />
         )}
 
         {activeTab === 'documents' && currentProjectData && (

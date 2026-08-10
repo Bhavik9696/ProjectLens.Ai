@@ -189,6 +189,7 @@ export interface RequirementAnalysisResult {
   contradictions?: Contradiction[];
   testEvidence?: { hasTests: boolean; testFiles: string[] };
   negativeEvidence?: string[];
+  evidenceFiles?: string[];      // convenience alias: top-level list of relevant files
 }
 
 export interface ScopeCreepItem {

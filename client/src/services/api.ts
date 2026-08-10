@@ -130,6 +130,24 @@ export async function sendCopilotMessageApi(userMessage: string, contextData: an
   }
 }
 
+export async function askRequirementApi(question: string, requirementContext: any, projectId?: string) {
+  try {
+    return await apiFetch('/api/copilot/ask-requirement', {
+      method: 'POST',
+      body: JSON.stringify({ question, requirementContext, projectId }),
+    });
+  } catch (err: any) {
+    console.error('[askRequirementApi] failed:', err?.message || err, err?.status, err?.body);
+    return {
+      content: `Error: ${err?.message || 'Could not reach the server'}. Check the browser console for details.`,
+      citations: [],
+      ragMeta: { mode: 'requirement-scoped-local', sentExternally: false, chunksSent: [] },
+    };
+  }
+}
+
+
+
 /* ------------------------------------------------------------------ */
 /* Payments & Credits (Razorpay Test Mode)                            */
 /* ------------------------------------------------------------------ */

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { RequirementAnalysisResult, CriterionResult, Contradiction } from '../types';
+import { RequirementAIPanel } from './RequirementAIPanel';
 import {
   Cpu,
   Calculator,
@@ -19,10 +20,12 @@ import {
   ChevronUp,
   Info,
   AlertCircle,
+  Bot,
 } from 'lucide-react';
 
 interface CoverageAnalyzerProps {
   analysisResults: RequirementAnalysisResult[];
+  projectId?: string;
 }
 
 const CRITERION_STATUS_CONFIG = {
@@ -97,8 +100,10 @@ function ContradictionBadges({ contradictions }: { contradictions: Contradiction
 
 export const CoverageAnalyzer: React.FC<CoverageAnalyzerProps> = ({
   analysisResults = [],
+  projectId,
 }) => {
   const safeResults = analysisResults || [];
+  const [askAIReq, setAskAIReq] = useState<RequirementAnalysisResult | null>(null);
 
   // Use criteria-based coverage if available, otherwise fall back to components
   const totalExpected = safeResults.reduce((acc, curr) => {
@@ -210,7 +215,7 @@ export const CoverageAnalyzer: React.FC<CoverageAnalyzerProps> = ({
                   {/* Top row */}
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2 border-b border-[var(--border)] pb-3">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded border border-[var(--accent)]/20">
                             {result.requirementId}
@@ -227,15 +232,31 @@ export const CoverageAnalyzer: React.FC<CoverageAnalyzerProps> = ({
                         )}
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <span className={`text-lg font-extrabold font-mono block ${
-                          isCompleted ? 'text-emerald-400' : isPartial ? 'text-amber-400' : 'text-rose-400'
-                        }`}>
-                          {result.coveragePercent}%
-                        </span>
-                        <span className="text-[10px] font-mono text-[var(--text-4)]">
-                          Confidence: {confidencePct}%
-                        </span>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="text-right">
+                          <span className={`text-lg font-extrabold font-mono block ${
+                            isCompleted ? 'text-emerald-400' : isPartial ? 'text-amber-400' : 'text-rose-400'
+                          }`}>
+                            {result.coveragePercent}%
+                          </span>
+                          <span className="text-[10px] font-mono text-[var(--text-4)]">
+                            Confidence: {confidencePct}%
+                          </span>
+                        </div>
+                        {/* Ask AI button */}
+                        <button
+                          onClick={() => setAskAIReq(result)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer hover:brightness-110"
+                          style={{
+                            background: 'rgba(214,255,63,0.08)',
+                            borderColor: 'rgba(214,255,63,0.30)',
+                            color: 'var(--accent)',
+                            boxShadow: '0 0 10px -4px rgba(214,255,63,0.25)',
+                          }}
+                        >
+                          <Bot className="w-3 h-3" />
+                          Ask AI
+                        </button>
                       </div>
                     </div>
 
@@ -336,6 +357,19 @@ export const CoverageAnalyzer: React.FC<CoverageAnalyzerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Ask AI Panel — mounted outside the grid so it overlays correctly */}
+      {askAIReq && (
+        <RequirementAIPanel
+          requirement={{
+            ...askAIReq,
+            // Flatten evidence.detectedFiles → evidenceFiles for the panel
+            evidenceFiles: askAIReq.evidenceFiles ?? askAIReq.evidence?.detectedFiles ?? [],
+          }}
+          projectId={projectId}
+          onClose={() => setAskAIReq(null)}
+        />
+      )}
     </div>
   );
 };
