@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   ArrowRight,
   Play,
@@ -15,8 +15,15 @@ import {
   ShieldCheck,
   Sun,
   Moon,
+  Zap,
+  Gift,
+  Star,
+  Loader2,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { createPaymentOrderApi, verifyPaymentApi } from '../services/api';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -50,13 +57,17 @@ function getTokens(isDark: boolean): React.CSSProperties {
       };
 }
 
-const NAV_LINKS = ['Features', 'How It Works'];
+const NAV_LINKS = [
+  { label: 'Features',    href: '#features'  },
+  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'Pricing',     href: '#pricing'   },
+];
 
 const INTEGRATIONS = [
-  { icon: Github, label: 'GitHub' },
-  { icon: Database, label: 'MongoDB' },
-  { icon: Server, label: 'Express' },
-  { icon: Component, label: 'React' },
+  { icon: Github,   label: 'GitHub'    },
+  { icon: Database, label: 'MongoDB'   },
+  { icon: Server,   label: 'Express'   },
+  { icon: Component,label: 'React'     },
   { icon: Sparkles, label: 'Gemini AI' },
 ];
 
@@ -101,68 +112,217 @@ const STEPS = [
   },
 ];
 
+const CREDIT_PACKS = [
+  {
+    id: 'pack_5',
+    credits: 5,
+    price: 129,
+    priceLabel: '₹129',
+    perCredit: '₹25.8 / project',
+    desc: 'Perfect for freelancers and small teams getting started.',
+    popular: false,
+    badge: 'Starter',
+  },
+  {
+    id: 'pack_10',
+    credits: 10,
+    price: 249,
+    priceLabel: '₹249',
+    perCredit: '₹24.9 / project',
+    desc: 'Great value for active developers managing multiple products.',
+    popular: true,
+    badge: 'Most Popular',
+  },
+  {
+    id: 'pack_25',
+    credits: 25,
+    price: 549,
+    priceLabel: '₹549',
+    perCredit: '₹21.9 / project',
+    desc: 'Ideal for growing teams with continuous delivery pipelines.',
+    popular: false,
+    badge: 'Pro',
+  },
+  {
+    id: 'pack_50',
+    credits: 50,
+    price: 999,
+    priceLabel: '₹999',
+    perCredit: '₹19.9 / project',
+    desc: 'Best rate for agencies and large engineering organizations.',
+    popular: false,
+    badge: 'Enterprise',
+  },
+];
+
+const ALL_FEATURES_INCLUDED = [
+  'SRS Requirement Extraction',
+  'GitHub Code Verification',
+  'Traceability Matrix (RTM)',
+  'Coverage Engine',
+  'Project Health Score',
+  'AI Copilot (Gemini RAG)',
+  'PDF Report Export',
+  'Unlimited Team Members',
+];
+
+// Dynamically load the Razorpay checkout script
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload  = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+// Smooth-scroll to a section by ID
+function scrollTo(id: string) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onSignUp }) => {
   const { theme, toggleTheme } = useTheme();
+  const { user, addPaidCredits, refreshCredits } = useAuth();
+  const { showToast } = useToast();
   const isDark = theme === 'dark';
   const tokens = getTokens(isDark);
+  const [processingPack, setProcessingPack] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode]       = useState<'live' | 'simulation' | null>(null);
 
   // ── Cursor glow ──────────────────────────────────────────────────────
   const glowRef = useRef<HTMLDivElement>(null);
   const rafRef  = useRef<number>(0);
 
   useEffect(() => {
-    // Disable on touch-only / coarse-pointer devices (mobile)
     if (window.matchMedia('(hover: none)').matches) return;
-
     const move = (e: MouseEvent) => {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         if (!glowRef.current) return;
-        glowRef.current.style.transform =
-          `translate(${e.clientX - 300}px, ${e.clientY - 300}px)`;
+        glowRef.current.style.transform = `translate(${e.clientX - 300}px, ${e.clientY - 300}px)`;
         glowRef.current.style.opacity = '1';
       });
     };
-
     window.addEventListener('mousemove', move, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', move);
-      cancelAnimationFrame(rafRef.current);
-    };
+    return () => { window.removeEventListener('mousemove', move); cancelAnimationFrame(rafRef.current); };
   }, []);
+
+  // Fetch payment mode once (simulation vs live)
+  useEffect(() => {
+    fetch('/api/payments/mode')
+      .then((r) => r.json())
+      .then((d) => setPaymentMode(d.mode))
+      .catch(() => setPaymentMode('simulation'));
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────
+
+  // ── Purchase handler ─────────────────────────────────────────────────
+  const handlePurchase = async (packId: string) => {
+    // If not logged in, redirect to sign-up first
+    if (!user) {
+      if (onSignUp) { onSignUp(); return; }
+      if (onSignIn) { onSignIn(); return; }
+      onGetStarted();
+      return;
+    }
+
+    setProcessingPack(packId);
+    try {
+      const orderData = await createPaymentOrderApi(packId);
+
+      // Simulation mode — no Razorpay popup
+      if (orderData.simulation || paymentMode === 'simulation') {
+        await new Promise((r) => setTimeout(r, 1000));
+        const result = await verifyPaymentApi({
+          razorpay_order_id:   orderData.orderId,
+          razorpay_payment_id: `sim_pay_${Date.now()}`,
+          razorpay_signature:  'simulation',
+          packId,
+        } as any);
+        if (result.success) {
+          addPaidCredits(result.creditsAdded);
+          await refreshCredits();
+          showToast(`🎉 ${result.creditsAdded} project credits added!`, 'success');
+        }
+        return;
+      }
+
+      // Live Razorpay checkout
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        showToast('Could not load payment gateway. Please check your connection.', 'error');
+        return;
+      }
+
+      await new Promise<void>((resolve) => {
+        const options: any = {
+          key:         orderData.keyId,
+          amount:      orderData.amount,
+          currency:    orderData.currency,
+          name:        'ProjectLens AI',
+          description: `${orderData.label}`,
+          order_id:    orderData.orderId,
+          prefill:     { name: user.name, email: user.email },
+          theme:       { color: isDark ? '#d6ff3f' : '#8aaa00' },
+          handler: async (response: any) => {
+            try {
+              const result = await verifyPaymentApi({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+                packId,
+              });
+              if (result.success) {
+                addPaidCredits(result.creditsAdded);
+                await refreshCredits();
+                showToast(`🎉 ${result.creditsAdded} project credits added!`, 'success');
+              }
+            } catch (e: any) {
+              showToast(e.message || 'Payment verification failed.', 'error');
+            }
+            resolve();
+          },
+          modal: { ondismiss: () => resolve() },
+        };
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      });
+    } catch (err: any) {
+      showToast(err.message || 'Failed to initiate payment. Please try again.', 'error');
+    } finally {
+      setProcessingPack(null);
+    }
+  };
   // ─────────────────────────────────────────────────────────────────────
 
   return (
     <div style={tokens} className="min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)] overflow-x-hidden">
 
-      {/* ── Cursor glow orb — fixed, behind everything, pointer-events off ── */}
+      {/* ── Cursor glow orb ── */}
       <div
         ref={glowRef}
         aria-hidden="true"
         style={{
-          position:     'fixed',
-          top:          0,
-          left:         0,
-          width:        600,
-          height:       600,
+          position: 'fixed', top: 0, left: 0, width: 600, height: 600,
           borderRadius: '50%',
-          background:   isDark
+          background: isDark
             ? 'radial-gradient(circle, rgba(214,255,63,0.10) 0%, rgba(156,184,46,0.05) 40%, transparent 70%)'
             : 'radial-gradient(circle, rgba(138,170,0,0.08)  0%, rgba(100,130,0,0.04)  40%, transparent 70%)',
-          filter:        'blur(40px)',
-          pointerEvents: 'none',
-          zIndex:        0,
-          opacity:       0,
-          willChange:    'transform',
-          transition:    'transform 0.12s ease-out, opacity 0.4s ease',
+          filter: 'blur(40px)', pointerEvents: 'none', zIndex: 0,
+          opacity: 0, willChange: 'transform',
+          transition: 'transform 0.12s ease-out, opacity 0.4s ease',
         }}
       />
 
       {/* ---------------------------------------------------------------- */}
       {/* Nav                                                               */}
       {/* ---------------------------------------------------------------- */}
-      <div className="px-4 sm:px-6 pt-5">
-        <nav className="max-w-6xl mx-auto flex items-center justify-between rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)]/80 backdrop-blur-md px-5 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+      <div className="px-4 sm:px-6 pt-5 sticky top-0 z-40">
+        <nav className="max-w-6xl mx-auto flex items-center justify-between rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)]/90 backdrop-blur-md px-5 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[var(--lens-accent)]/15 border border-[var(--lens-accent)]/30 flex items-center justify-center">
               <Radar className="w-4 h-4 text-[var(--lens-accent)]" />
@@ -172,9 +332,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
 
           <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-[var(--lens-text-dim)]">
             {NAV_LINKS.map((link) => (
-              <a key={link} href="#" className="hover:text-[var(--lens-text)] transition-colors">
-                {link}
-              </a>
+              <button
+                key={link.label}
+                onClick={() => scrollTo(link.href.slice(1))}
+                className="hover:text-[var(--lens-text)] transition-colors cursor-pointer bg-transparent border-0 p-0"
+                style={{ color: 'inherit' }}
+              >
+                {link.label}
+              </button>
             ))}
           </div>
 
@@ -190,7 +355,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            {/* Sign In link */}
             <button
               id="landing-signin-btn"
               onClick={onSignIn || onGetStarted}
@@ -215,7 +379,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* Hero                                                              */}
       {/* ---------------------------------------------------------------- */}
       <section className="relative overflow-hidden">
-        {/* Corner spotlight glows, matching the reference image's ambient lighting */}
         <div className="pointer-events-none absolute -top-24 -left-24 w-80 h-80 bg-[var(--lens-accent)]/10 blur-[100px] rounded-full" />
         <div className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 bg-[var(--lens-accent)]/10 blur-[100px] rounded-full" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -250,20 +413,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               Launch ProjectLens
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </button>
-            <button className="inline-flex items-center gap-2.5 text-sm font-semibold text-[var(--lens-text)] cursor-pointer">
+            <button
+              onClick={() => scrollTo('pricing')}
+              className="inline-flex items-center gap-2.5 text-sm font-semibold text-[var(--lens-text)] cursor-pointer"
+            >
               <span className="w-9 h-9 rounded-full bg-[var(--lens-panel-2)] border border-[var(--lens-border)] flex items-center justify-center">
-                <Play className="w-3.5 h-3.5 fill-current text-[var(--lens-accent)] text-[var(--lens-accent)] ml-0.5" />
+                <Play className="w-3.5 h-3.5 fill-current text-[var(--lens-accent)] ml-0.5" />
               </span>
-              See How It Works
+              See Pricing
             </button>
           </div>
           <p className="text-center text-[12px] font-mono text-[var(--lens-text-dim)]/70 mt-3">
-            No setup required — connect a repo in seconds
+            First 2 projects free — no credit card required
           </p>
 
-          {/* Signature element: "Coverage Cards" — the credit-card motif from
-              the reference, translated into the product's own artifact: a
-              requirement's real evidence-backed coverage state. */}
           <div className="relative h-[260px] sm:h-[300px] mt-14 max-w-3xl mx-auto">
             <CoverageCard
               className="absolute left-0 sm:left-4 top-16 sm:top-20 -rotate-6 w-[210px] sm:w-[240px]"
@@ -283,7 +446,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       </section>
 
       {/* ---------------------------------------------------------------- */}
-      {/* Diagonal marquee ribbon                                          */}
+      {/* Marquee ribbon                                                    */}
       {/* ---------------------------------------------------------------- */}
       <section className="mt-4 mb-24 overflow-hidden">
         <p className="text-center text-[11px] font-mono tracking-[0.2em] text-[var(--lens-text-dim)] mb-4">
@@ -306,7 +469,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* ---------------------------------------------------------------- */}
       {/* Features                                                         */}
       {/* ---------------------------------------------------------------- */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+      <section id="features" className="max-w-6xl mx-auto px-4 sm:px-6 py-4 scroll-mt-24">
         <div className="max-w-xl mb-12">
           <p className="text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">WHAT IT DOES</p>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
@@ -331,9 +494,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       </section>
 
       {/* ---------------------------------------------------------------- */}
-      {/* How it works — a real 3-step sequence, so numbering is earned    */}
+      {/* How it works                                                     */}
       {/* ---------------------------------------------------------------- */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-24">
+      <section id="how-it-works" className="max-w-6xl mx-auto px-4 sm:px-6 py-24 scroll-mt-24">
         <div className="max-w-xl mb-12">
           <p className="text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">THE FLOW</p>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Three steps to real coverage</h2>
@@ -353,6 +516,207 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </div>
       </section>
 
+      {/* ================================================================ */}
+      {/* Pricing Section                                                  */}
+      {/* ================================================================ */}
+      <section id="pricing" className="max-w-6xl mx-auto px-4 sm:px-6 py-24 scroll-mt-24">
+        {/* Section header */}
+        <div className="text-center mb-5">
+          <p className="text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">PRICING</p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">
+            Simple, project-based credits
+          </h2>
+          <p className="text-[var(--lens-text-dim)] text-[15px] max-w-lg mx-auto leading-relaxed">
+            Pay only for what you build. No subscriptions, no seat fees.
+          </p>
+        </div>
+
+        {/* Free tier banner */}
+        <div className="relative rounded-2xl border border-[var(--lens-accent)]/35 bg-[var(--lens-panel-2)] px-6 py-5 mb-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 overflow-hidden">
+          <div className="pointer-events-none absolute -right-12 -top-12 w-40 h-40 rounded-full bg-[var(--lens-accent)]/8 blur-3xl" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-11 h-11 rounded-xl bg-[var(--lens-accent)]/15 border border-[var(--lens-accent)]/35 flex items-center justify-center flex-shrink-0">
+              <Gift className="w-5 h-5 text-[var(--lens-accent)]" />
+            </div>
+            <div>
+              <p className="font-bold text-[15px]" style={{ color: 'var(--lens-text)' }}>
+                Your first 2 projects are completely <span style={{ color: 'var(--lens-accent)' }}>FREE</span>
+              </p>
+              <p className="text-[13px]" style={{ color: 'var(--lens-text-dim)' }}>
+                No credit card required. All features included from day one.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onSignUp || onGetStarted}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--lens-accent)] text-black text-[13px] font-bold hover:brightness-110 transition-all cursor-pointer flex-shrink-0 relative z-10"
+          >
+            Start Free
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 mb-10">
+          <div className="flex-1 h-px" style={{ background: 'var(--lens-border)' }} />
+          <span className="text-[11px] font-mono tracking-widest uppercase" style={{ color: 'var(--lens-text-dim)' }}>
+            Need more projects? Buy credits
+          </span>
+          <div className="flex-1 h-px" style={{ background: 'var(--lens-border)' }} />
+        </div>
+
+        {/* Pricing cards grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          {CREDIT_PACKS.map((pack) => {
+            const isLoading = processingPack === pack.id;
+            return (
+              <div
+                key={pack.id}
+                className="relative rounded-2xl border flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-1"
+                style={{
+                  background:   pack.popular
+                    ? (isDark ? 'linear-gradient(145deg,#161a0a,#101208)' : 'linear-gradient(145deg,#f8ffe0,#f0facc)')
+                    : 'var(--lens-panel)',
+                  borderColor:  pack.popular ? 'rgba(214,255,63,0.5)' : 'var(--lens-border)',
+                  boxShadow:    pack.popular ? '0 0 40px -10px rgba(214,255,63,0.18)' : 'none',
+                }}
+              >
+                {/* Popular ribbon */}
+                {pack.popular && (
+                  <div
+                    className="absolute top-0 right-0 px-3 py-1 text-[10px] font-bold font-mono uppercase tracking-wider rounded-bl-xl flex items-center gap-1"
+                    style={{ background: 'var(--lens-accent)', color: '#000' }}
+                  >
+                    <Star className="w-3 h-3" />
+                    {pack.badge}
+                  </div>
+                )}
+
+                <div className="p-5 flex flex-col flex-1">
+                  {/* Badge (non-popular) */}
+                  {!pack.popular && (
+                    <span
+                      className="self-start text-[10px] font-bold font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border mb-4"
+                      style={{ color: 'var(--lens-accent)', borderColor: 'rgba(214,255,63,0.25)', background: 'rgba(214,255,63,0.06)' }}
+                    >
+                      {pack.badge}
+                    </span>
+                  )}
+                  {pack.popular && <div className="mt-5" />}
+
+                  {/* Credits */}
+                  <div className="flex items-baseline gap-1.5 mb-1">
+                    <span
+                      className="text-4xl font-extrabold font-mono tracking-tight"
+                      style={{ color: pack.popular ? 'var(--lens-accent)' : 'var(--lens-text)' }}
+                    >
+                      {pack.credits}
+                    </span>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--lens-text-dim)' }}>
+                      projects
+                    </span>
+                  </div>
+
+                  {/* Price */}
+                  <div className="text-2xl font-extrabold mb-1" style={{ color: 'var(--lens-text)' }}>
+                    {pack.priceLabel}
+                  </div>
+                  <div className="text-[11px] font-mono mb-4" style={{ color: 'var(--lens-text-dim)' }}>
+                    {pack.perCredit}
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-[13px] leading-relaxed flex-1 mb-5" style={{ color: 'var(--lens-text-dim)' }}>
+                    {pack.desc}
+                  </p>
+
+                  {/* CTA */}
+                  <button
+                    id={`pricing-${pack.id}-btn`}
+                    onClick={() => handlePurchase(pack.id)}
+                    disabled={!!processingPack}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={
+                      pack.popular
+                        ? { background: 'var(--lens-accent)', color: '#000', boxShadow: '0 0 20px -4px rgba(214,255,63,0.5)' }
+                        : { background: 'transparent', color: 'var(--lens-accent)', border: '1px solid rgba(214,255,63,0.35)' }
+                    }
+                  >
+                    {isLoading ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
+                    ) : !user ? (
+                      <><Zap className="w-3.5 h-3.5" /> Get Started</>
+                    ) : (
+                      <><Zap className="w-3.5 h-3.5" /> Purchase</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* All plans include */}
+        <div
+          className="rounded-2xl border p-6"
+          style={{ background: 'var(--lens-panel)', borderColor: 'var(--lens-border)' }}
+        >
+          <p className="text-center text-[12px] font-mono tracking-[0.15em] uppercase mb-5" style={{ color: 'var(--lens-accent)' }}>
+            All plans include full access to ProjectLens AI — no feature restrictions
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {ALL_FEATURES_INCLUDED.map((f) => (
+              <div key={f} className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--lens-text-dim)' }}>
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--lens-accent)' }} />
+                {f}
+              </div>
+            ))}
+          </div>
+
+          {/* Credit rules note */}
+          <div
+            className="mt-5 pt-4 border-t grid sm:grid-cols-3 gap-3 text-center text-[12px]"
+            style={{ borderColor: 'var(--lens-border)', color: 'var(--lens-text-dim)' }}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <Gift className="w-4 h-4" style={{ color: 'var(--lens-accent)' }} />
+              <span>2 free projects for every new account</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <Zap className="w-4 h-4" style={{ color: 'var(--lens-accent)' }} />
+              <span>Free projects always consumed before paid credits</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--lens-accent)' }} />
+              <span>Buy credits anytime — even before using your free projects</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Unauthenticated nudge */}
+        {!user && (
+          <p className="text-center mt-6 text-[13px]" style={{ color: 'var(--lens-text-dim)' }}>
+            Clicking Purchase will take you to{' '}
+            <button
+              onClick={onSignIn || onGetStarted}
+              className="underline underline-offset-2 font-semibold cursor-pointer"
+              style={{ color: 'var(--lens-accent)' }}
+            >
+              Sign In
+            </button>
+            {' '}or{' '}
+            <button
+              onClick={onSignUp || onGetStarted}
+              className="underline underline-offset-2 font-semibold cursor-pointer"
+              style={{ color: 'var(--lens-accent)' }}
+            >
+              Sign Up
+            </button>
+            {' '}first.
+          </p>
+        )}
+      </section>
+
       {/* ---------------------------------------------------------------- */}
       {/* Closing CTA                                                      */}
       {/* ---------------------------------------------------------------- */}
@@ -365,13 +729,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               <br />
               Start reporting on <span className="text-[var(--lens-accent)]">evidence</span>.
             </h2>
-            <button
-              onClick={onGetStarted}
-              className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[var(--lens-accent)] text-black font-bold text-sm hover:brightness-110 transition-all shadow-[0_0_30px_-6px_var(--lens-accent)] cursor-pointer"
-            >
-              Launch ProjectLens
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
+              <button
+                onClick={onGetStarted}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[var(--lens-accent)] text-black font-bold text-sm hover:brightness-110 transition-all shadow-[0_0_30px_-6px_var(--lens-accent)] cursor-pointer"
+              >
+                Start Free — 2 Projects Included
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => scrollTo('pricing')}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer border"
+                style={{ color: 'var(--lens-text-dim)', borderColor: 'var(--lens-border)' }}
+              >
+                View Pricing
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -394,7 +767,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       <style>{`
         @keyframes marquee {
           from { transform: translateX(0); }
-          to { transform: translateX(-33.333%); }
+          to   { transform: translateX(-33.333%); }
         }
       `}</style>
     </div>
@@ -402,9 +775,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
 };
 
 /* -------------------------------------------------------------------- */
-/* Signature hero visual: a "coverage card" — the credit-card motif from */
-/* the reference image, reinterpreted as the product's own evidence     */
-/* artifact (module name, coverage ring, status, evidence ticks).       */
+/* CoverageCard                                                           */
 /* -------------------------------------------------------------------- */
 function CoverageCard({
   className = '',

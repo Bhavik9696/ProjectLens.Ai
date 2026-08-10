@@ -147,6 +147,7 @@ export interface CreateOrderResponse {
   packId: string;
   credits: number;
   label: string;
+  simulation?: boolean;
 }
 
 export async function fetchCreditsApi(): Promise<CreditState> {
