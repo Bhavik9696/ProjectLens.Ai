@@ -7,6 +7,8 @@ export type ImplementationStatus =
   | 'Unable to Determine'
   | 'Completed'
   | 'Partial';
+export type CriterionStatus = 'IMPLEMENTED' | 'PARTIAL' | 'MISSING' | 'NOT_VERIFIABLE';
+export type ContradictionSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ProjectHealthStatus = 'Healthy' | 'Medium Risk' | 'High Risk';
 export type DocumentType = 'SRS' | 'Proposal' | 'Sprint Report' | 'Meeting Notes' | 'Design Doc' | 'Timeline' | 'Feature List';
 
@@ -53,6 +55,11 @@ export interface SoftwareRequirement {
   expectedComponents: string[];
   description: string;
   sourceDocument: string;
+  // Enhanced fields (optional for backward compat)
+  actor?: string;        // who: 'user', 'admin', 'registered user'
+  action?: string;       // what: 'reset password', 'upload file'
+  object?: string;       // on what: 'password', 'document'
+  acceptanceCriteria?: string[];  // testable criteria derived from requirement
 }
 
 export interface DetectedModule {
@@ -97,6 +104,29 @@ export interface GitIssue {
   relatedModule?: string;
 }
 
+export interface CodeGraph {
+  routes: string[];
+  tests: string[];
+  controllers: string[];
+  services: string[];
+  models: string[];
+  components: string[];
+  pages: string[];
+  hooks: string[];
+  middleware: string[];
+  inferredApiRoutes: string[];
+  summary: {
+    totalFiles: number;
+    routeFiles: number;
+    testFiles: number;
+    controllerFiles: number;
+    serviceFiles: number;
+    modelFiles: number;
+    componentFiles: number;
+    pageFiles: number;
+  };
+}
+
 export interface ImplementationProfile {
   repoName: string;
   owner: string;
@@ -108,6 +138,7 @@ export interface ImplementationProfile {
   pullRequests: GitPullRequest[];
   issues: GitIssue[];
   fileTree: string[];
+  codeGraph?: CodeGraph;  // New: lightweight code graph from file tree
   lastAnalyzedAt: string;
 }
 
@@ -117,6 +148,26 @@ export interface RequirementEvidence {
   relatedCommits: { hash: string; message: string; author: string; date: string }[];
   relatedPRs: { id: number; title: string; state: string }[];
   relatedIssues: { id: number; title: string; state: string }[];
+}
+
+// New: per-criterion analysis result
+export interface CriterionResult {
+  description: string;
+  status: CriterionStatus;
+  confidence: number;    // 0.0 – 1.0
+  evidence: string[];    // file paths or descriptions
+  missing: string[];     // what is missing for this criterion
+  reason: string;        // explanation
+}
+
+// New: detected contradiction between requirement and implementation
+export interface Contradiction {
+  type: string;
+  severity: ContradictionSeverity;
+  confidence: number;
+  title: string;
+  evidence: string[];
+  recommendation: string;
 }
 
 export interface RequirementAnalysisResult {
@@ -129,9 +180,15 @@ export interface RequirementAnalysisResult {
   missingComponents: string[];
   coveragePercent: number;
   confidencePercent: number;
+  confidence?: number;           // 0.0 – 1.0 version of confidencePercent
   status: ImplementationStatus;
   evidence: RequirementEvidence;
   recommendation: string;
+  // Enhanced fields (optional for backward compat)
+  criteria?: CriterionResult[];
+  contradictions?: Contradiction[];
+  testEvidence?: { hasTests: boolean; testFiles: string[] };
+  negativeEvidence?: string[];
 }
 
 export interface ProjectHealthMetrics {

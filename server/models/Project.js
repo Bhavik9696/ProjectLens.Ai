@@ -43,6 +43,11 @@ const SoftwareRequirementSchema = new Schema(
     expectedComponents: [String],
     description: String,
     sourceDocument: String,
+    // Enhanced fields (optional, backward compat)
+    actor: String,
+    action: String,
+    object: String,
+    acceptanceCriteria: [String],
   },
   { _id: false }
 );
@@ -113,6 +118,7 @@ const ImplementationProfileSchema = new Schema(
     pullRequests: [GitPullRequestSchema],
     issues: [GitIssueSchema],
     fileTree: [String],
+    codeGraph: { type: mongoose.Schema.Types.Mixed, default: null },
     lastAnalyzedAt: String,
   },
   { _id: false }
@@ -131,6 +137,30 @@ const RequirementEvidenceSchema = new Schema(
   { _id: false }
 );
 
+const CriterionResultSchema = new Schema(
+  {
+    description: String,
+    status: String,
+    confidence: Number,
+    evidence: [String],
+    missing: [String],
+    reason: String,
+  },
+  { _id: false }
+);
+
+const ContradictionSchema = new Schema(
+  {
+    type: String,
+    severity: String,
+    confidence: Number,
+    title: String,
+    evidence: [String],
+    recommendation: String,
+  },
+  { _id: false }
+);
+
 const RequirementAnalysisResultSchema = new Schema(
   {
     requirementId: String,
@@ -142,9 +172,18 @@ const RequirementAnalysisResultSchema = new Schema(
     missingComponents: [String],
     coveragePercent: Number,
     confidencePercent: Number,
+    confidence: Number,
     status: String,
     evidence: RequirementEvidenceSchema,
     recommendation: String,
+    // Enhanced fields (optional, backward compat)
+    criteria: [CriterionResultSchema],
+    contradictions: [ContradictionSchema],
+    negativeEvidence: [String],
+    testEvidence: {
+      type: { hasTests: Boolean, testFiles: [String] },
+      default: null,
+    },
   },
   { _id: false }
 );

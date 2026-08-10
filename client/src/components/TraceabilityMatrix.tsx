@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RequirementAnalysisResult, ImplementationStatus } from '../types';
+import { RequirementAnalysisResult, ImplementationStatus, CriterionResult, Contradiction } from '../types';
 import {
   Search,
   Filter,
@@ -12,6 +12,12 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Check,
+  X,
+  FlaskConical,
+  ShieldOff,
+  AlertTriangle,
+  Shield,
 } from 'lucide-react';
 
 interface TraceabilityMatrixProps {
@@ -101,7 +107,7 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
               End-to-end mapping from{' '}
               <strong className="text-[var(--text-2)]">SRS Requirements</strong>
               {' '}to{' '}
-              <strong className="text-[var(--text-2)]">GitHub Files, Commits & PRs</strong>.
+              <strong className="text-[var(--text-2)]">GitHub Files, Commits &amp; PRs</strong>.
             </p>
           </div>
 
@@ -135,7 +141,6 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
 
       {/* ── Filter Controls ── */}
       <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
-        {/* Search */}
         <div className="relative">
           <Search className="w-4 h-4 text-[var(--text-5)] absolute left-3 top-2.5" />
           <input
@@ -147,7 +152,6 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
           />
         </div>
 
-        {/* Dropdowns — 3-col grid on mobile */}
         <div className="grid grid-cols-3 gap-2">
           <select
             value={selectedModule}
@@ -188,10 +192,10 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
         </div>
       </div>
 
-      {/* ── Main content: Cards on mobile / Table+Drawer on md+ ── */}
+      {/* ── Main content ── */}
       <div>
 
-        {/* ── MOBILE CARD VIEW (< md) ── */}
+        {/* ── MOBILE CARD VIEW (<md) ── */}
         <div className="md:hidden space-y-2">
           {filteredResults.length === 0 ? (
             <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-10 text-center space-y-2">
@@ -202,11 +206,7 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
             filteredResults.map((r) => {
               const isExpanded = expandedMobileRow === r.requirementId;
               return (
-                <div
-                  key={r.requirementId}
-                  className="bg-[var(--panel)] border border-[var(--border)] rounded-xl overflow-hidden"
-                >
-                  {/* Card Header — always visible */}
+                <div key={r.requirementId} className="bg-[var(--panel)] border border-[var(--border)] rounded-xl overflow-hidden">
                   <button
                     onClick={() => setExpandedMobileRow(isExpanded ? null : r.requirementId)}
                     className="w-full flex items-start gap-3 p-3.5 text-left cursor-pointer hover:bg-[var(--bg)]/50 transition-colors"
@@ -226,18 +226,21 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                         <span className="truncate">{r.module}</span>
                         <span className="text-[var(--text-5)]">·</span>
                         <span className={r.priority === 'High' ? 'text-rose-400' : 'text-amber-400'}>{r.priority}</span>
+                        {r.testEvidence && (
+                          <>
+                            <span className="text-[var(--text-5)]">·</span>
+                            <span className={r.testEvidence.hasTests ? 'text-purple-400' : 'text-[var(--text-5)]'}>
+                              {r.testEvidence.hasTests ? '✓ Tests' : '✗ No Tests'}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    {isExpanded
-                      ? <ChevronUp className="w-4 h-4 text-[var(--text-5)] flex-shrink-0 mt-1" />
-                      : <ChevronDown className="w-4 h-4 text-[var(--text-5)] flex-shrink-0 mt-1" />
-                    }
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--text-5)] flex-shrink-0 mt-1" /> : <ChevronDown className="w-4 h-4 text-[var(--text-5)] flex-shrink-0 mt-1" />}
                   </button>
 
-                  {/* Expanded detail */}
                   {isExpanded && (
                     <div className="border-t border-[var(--border)] px-3.5 pb-3.5 pt-3 space-y-3 bg-[var(--bg)]/30">
-                      {/* Coverage bar */}
                       <div>
                         <div className="flex justify-between text-[10px] font-mono mb-1">
                           <span className="text-[var(--text-4)]">Coverage</span>
@@ -246,15 +249,27 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                         <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${r.coveragePercent}%`,
-                              background: r.coveragePercent === 100 ? '#34d399' : r.coveragePercent > 0 ? '#fbbf24' : '#f87171',
-                            }}
+                            style={{ width: `${r.coveragePercent}%`, background: r.coveragePercent === 100 ? '#34d399' : r.coveragePercent > 0 ? '#fbbf24' : '#f87171' }}
                           />
                         </div>
                       </div>
 
-                      {/* Detected files */}
+                      {r.criteria && r.criteria.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-mono font-bold uppercase text-[var(--accent)] mb-1.5 flex items-center gap-1">
+                            <Shield className="w-3 h-3" /> Acceptance Criteria
+                          </p>
+                          <div className="space-y-1">
+                            {r.criteria.slice(0, 4).map((c, i) => (
+                              <div key={i} className="flex items-start gap-1.5 text-[10px]">
+                                {c.status === 'IMPLEMENTED' ? <Check className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" /> : <X className="w-3 h-3 text-rose-400 shrink-0 mt-0.5" />}
+                                <span className={c.status === 'IMPLEMENTED' ? 'text-[var(--text-3)]' : 'text-[var(--text-5)]'}>{c.description}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {r.evidence?.detectedFiles?.length ? (
                         <div>
                           <p className="text-[10px] font-mono font-bold uppercase text-[var(--text-4)] mb-1.5 flex items-center gap-1">
@@ -262,24 +277,24 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                           </p>
                           <div className="space-y-1">
                             {r.evidence.detectedFiles.slice(0, 3).map((f) => (
-                              <div key={f} className="text-[11px] font-mono text-[var(--accent)] bg-[var(--accent)]/5 px-2 py-1 rounded border border-[var(--accent)]/15 truncate">
-                                {f}
-                              </div>
+                              <div key={f} className="text-[11px] font-mono text-[var(--accent)] bg-[var(--accent)]/5 px-2 py-1 rounded border border-[var(--accent)]/15 truncate">{f}</div>
                             ))}
-                            {r.evidence.detectedFiles.length > 3 && (
-                              <span className="text-[10px] text-[var(--text-5)]">+{r.evidence.detectedFiles.length - 3} more files</span>
-                            )}
+                            {r.evidence.detectedFiles.length > 3 && <span className="text-[10px] text-[var(--text-5)]">+{r.evidence.detectedFiles.length - 3} more files</span>}
                           </div>
                         </div>
                       ) : (
                         <p className="text-[11px] text-[var(--text-5)] italic">No matching files found in GitHub repo.</p>
                       )}
 
-                      {/* Recommendation */}
+                      {r.contradictions && r.contradictions.length > 0 && (
+                        <div className="p-2 rounded-lg border border-rose-500/20 bg-rose-950/20 text-[10px] text-rose-300">
+                          <span className="font-bold flex items-center gap-1 mb-1"><ShieldOff className="w-3 h-3" /> {r.contradictions[0].title}</span>
+                          <p className="opacity-70">{r.contradictions[0].recommendation}</p>
+                        </div>
+                      )}
+
                       <div className="p-2.5 rounded-lg bg-[var(--accent)]/8 border border-[var(--accent)]/20 text-[11px] text-[var(--text-3)] leading-relaxed">
-                        <span className="flex items-center gap-1 font-bold text-[var(--accent)] text-[10px] mb-1">
-                          <Sparkles className="w-3 h-3" /> Recommendation
-                        </span>
+                        <span className="flex items-center gap-1 font-bold text-[var(--accent)] text-[10px] mb-1"><Sparkles className="w-3 h-3" /> Recommendation</span>
                         {r.recommendation}
                       </div>
                     </div>
@@ -298,7 +313,7 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
               <table className="w-full text-left text-xs">
                 <thead className="bg-[var(--bg)] border-b border-[var(--border)] text-[var(--text-4)] uppercase font-mono font-bold text-[10px] tracking-wider">
                   <tr>
-                    <th className="py-3 px-4">REQ ID & Title</th>
+                    <th className="py-3 px-4">REQ ID &amp; Title</th>
                     <th className="py-3 px-4">Module</th>
                     <th className="py-3 px-4">Code Files</th>
                     <th className="py-3 px-4">Commit / PR</th>
@@ -379,7 +394,7 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
             </div>
           </div>
 
-          {/* Evidence Drawer */}
+          {/* ── Enhanced Evidence Drawer ── */}
           <div className="lg:col-span-1 bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-4">
             {activeEvidenceResult ? (
               <div className="space-y-4">
@@ -395,19 +410,56 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                   {getStatusBadge(activeEvidenceResult.status)}
                 </div>
 
+                {/* Stats */}
                 <div className="bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)] space-y-2">
                   {[
                     ['Module Area', activeEvidenceResult.module],
                     ['Priority', activeEvidenceResult.priority],
-                    ['Component Coverage', `${activeEvidenceResult.foundComponents.length} / ${activeEvidenceResult.expectedComponents.length} (${activeEvidenceResult.coveragePercent}%)`],
+                    ['Coverage', `${activeEvidenceResult.coveragePercent}%`],
+                    ['Confidence', `${activeEvidenceResult.confidencePercent}%`],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between text-xs">
                       <span className="text-[var(--text-4)]">{label}:</span>
                       <span className="font-semibold text-[var(--text-2)] text-right ml-2">{value}</span>
                     </div>
                   ))}
+                  {activeEvidenceResult.testEvidence && (
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--border)]">
+                      <span className="text-[var(--text-4)] flex items-center gap-1">
+                        <FlaskConical className="w-3 h-3 text-purple-400" /> Tests:
+                      </span>
+                      <span className={`font-semibold text-xs ${activeEvidenceResult.testEvidence.hasTests ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {activeEvidenceResult.testEvidence.hasTests
+                          ? `✓ ${activeEvidenceResult.testEvidence.testFiles.length} test file(s)`
+                          : '✗ No test files'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
+                {/* Acceptance Criteria */}
+                {activeEvidenceResult.criteria && activeEvidenceResult.criteria.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--accent)] flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5" />
+                      Acceptance Criteria ({activeEvidenceResult.criteria.filter(c => c.status === 'IMPLEMENTED').length}/{activeEvidenceResult.criteria.length})
+                    </span>
+                    <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
+                      {activeEvidenceResult.criteria.map((c, i) => (
+                        <div key={i} className={`p-1.5 rounded text-[10px] border flex items-start gap-1.5 ${
+                          c.status === 'IMPLEMENTED' ? 'bg-emerald-950/20 border-emerald-500/20' : 'bg-rose-950/20 border-rose-500/20'
+                        }`}>
+                          {c.status === 'IMPLEMENTED'
+                            ? <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
+                            : <AlertCircle className="w-3 h-3 text-rose-400 shrink-0 mt-0.5" />}
+                          <span className="leading-snug text-[var(--text-3)]">{c.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Code Files */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-4)] flex items-center gap-1">
                     <FileCode className="w-3.5 h-3.5 text-[var(--accent)]" />
@@ -429,10 +481,43 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                   )}
                 </div>
 
+                {/* Contradictions */}
+                {activeEvidenceResult.contradictions && activeEvidenceResult.contradictions.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1">
+                      <ShieldOff className="w-3.5 h-3.5" />
+                      Contradictions ({activeEvidenceResult.contradictions.length})
+                    </span>
+                    {activeEvidenceResult.contradictions.map((c, i) => (
+                      <div key={i} className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/20 text-[10px] space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-rose-300">{c.title}</span>
+                          <span className="text-[9px] text-rose-400 border border-rose-500/30 px-1 rounded">{c.severity}</span>
+                        </div>
+                        <p className="text-[var(--text-4)] leading-snug">{c.recommendation}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Negative Evidence */}
+                {activeEvidenceResult.negativeEvidence && activeEvidenceResult.negativeEvidence.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Missing Signals
+                    </span>
+                    {activeEvidenceResult.negativeEvidence.slice(0, 3).map((neg, i) => (
+                      <p key={i} className="text-[10px] text-[var(--text-5)] pl-2 border-l-2 border-amber-500/30 leading-snug">{neg}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Related Commits & PRs */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-4)] flex items-center gap-1">
                     <GitCommit className="w-3.5 h-3.5 text-[var(--accent)]" />
-                    Related Commits & PRs
+                    Related Commits &amp; PRs
                   </span>
                   {activeEvidenceResult.evidence?.relatedCommits?.length ? (
                     <div className="space-y-1.5">
@@ -453,10 +538,11 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                   )}
                 </div>
 
+                {/* Recommendation */}
                 <div className="p-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/30 space-y-1 text-xs">
                   <span className="font-bold text-[var(--accent)] flex items-center gap-1 text-[11px]">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Deterministic Engine Recommendation
+                    AI-Powered Recommendation
                   </span>
                   <p className="text-[var(--text-3)] leading-relaxed text-[11px]">
                     {activeEvidenceResult.recommendation}

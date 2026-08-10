@@ -1,4 +1,6 @@
 import { extractModulesFromPaths } from './heuristics.js';
+import { buildCodeGraph } from './codeGraphService.js';
+
 
 export function parseGithubUrl(githubUrl) {
   if (!githubUrl) return null;
@@ -257,6 +259,7 @@ export async function analyzeGithubRepo(githubUrl, expectedRequirements) {
     pullRequests,
     issues,
     fileTree,
+    codeGraph: buildCodeGraph(fileTree),
     lastAnalyzedAt: new Date().toISOString(),
   };
 }
