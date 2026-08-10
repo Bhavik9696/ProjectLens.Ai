@@ -35,6 +35,8 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(documents[0]?.id || null);
 
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -45,14 +47,31 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       setFileType(ext as any);
     }
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target?.result as string;
-      if (text) {
-        setRawText(text);
-      }
-    };
-    reader.readAsText(file);
+    if (ext === 'PDF') {
+      // Read PDF as binary, convert to base64 — never readAsText for PDFs
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const arrayBuffer = evt.target?.result as ArrayBuffer;
+        if (arrayBuffer) {
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+          const b64 = btoa(binary);
+          setPdfBase64(b64);
+          setRawText(''); // not used for PDFs
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Plain text formats
+      setPdfBase64(null);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target?.result as string;
+        if (text) setRawText(text);
+      };
+      reader.readAsText(file);
+    }
   };
 
   const loadPresetSample = (type: 'healthcare' | 'ecommerce' | 'fintech') => {
@@ -103,12 +122,21 @@ Module 2: Payment Gateway & Security
 
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rawText.trim()) return;
+
+    const isPdf = fileType === 'PDF';
+    if (isPdf && !pdfBase64) return; // PDF not yet loaded
+    if (!isPdf && !rawText.trim()) return; // text not yet loaded
 
     setIsProcessing(true);
     try {
       const name = docName.trim() || `${docType} Document (${fileType})`;
-      const result = await parseDocumentApi(name, docType, rawText);
+      const result = await parseDocumentApi(
+        name,
+        docType,
+        isPdf ? '' : rawText,
+        fileType,
+        isPdf ? (pdfBase64 ?? undefined) : undefined,
+      );
 
       const newDocId = `doc-${Date.now()}`;
       const newDoc: ProjectDocument = {
@@ -117,7 +145,7 @@ Module 2: Payment Gateway & Security
         name,
         type: docType,
         fileType,
-        content: rawText,
+        content: isPdf ? '[PDF — text extracted server-side]' : rawText,
         sections: result.sections || [],
         uploadDate: new Date().toISOString(),
       };
@@ -138,8 +166,15 @@ Module 2: Payment Gateway & Security
       setSelectedDocId(newDocId);
       setDocName('');
       setRawText('');
-    } catch (err) {
+      setPdfBase64(null);
+    } catch (err: any) {
       console.error('Document processing failed', err);
+      const msg = err?.message || '';
+      if (msg.startsWith('OCR_REQUIRED')) {
+        alert('This PDF appears to be a scanned image. Please use a text-based PDF or paste the content as plain text.');
+      } else if (msg.includes('Unable to extract')) {
+        alert(msg);
+      }
     } finally {
       setIsProcessing(false);
     }

@@ -66,15 +66,39 @@ export async function deleteProjectApi(projectId: string): Promise<void> {
 /* Deterministic + Gemini-backed analysis engine endpoints             */
 /* ------------------------------------------------------------------ */
 
-export async function parseDocumentApi(documentName: string, documentType: string, content: string) {
+export async function parseDocumentApi(
+  documentName: string,
+  documentType: string,
+  content: string,
+  fileType?: string,
+  pdfBase64?: string,
+) {
   try {
+    const body: Record<string, any> = { documentName, documentType, fileType };
+
+    if (fileType === 'PDF' && pdfBase64) {
+      // Send PDF as base64 — never send raw binary as text
+      body.pdfBase64 = pdfBase64;
+    } else {
+      body.content = content;
+    }
+
     return await apiFetch('/api/documents/parse', {
       method: 'POST',
-      body: JSON.stringify({ documentName, documentType, content }),
+      body: JSON.stringify(body),
     });
-  } catch (err) {
+  } catch (err: any) {
     console.warn('API document parse fallback:', err);
-    // Client fallback so the UI still works if the API is briefly unreachable
+
+    // Surface OCR / unreadable errors properly to the UI
+    if (err?.body?.error === 'OCR_REQUIRED') {
+      throw new Error('OCR_REQUIRED: ' + (err?.body?.message || 'Scanned PDF detected'));
+    }
+    if (err?.body?.error === 'PDF_UNREADABLE') {
+      throw new Error(err?.body?.message || 'Unable to extract readable text from this PDF.');
+    }
+
+    // Generic fallback for connection issues
     return {
       sections: [
         {
@@ -98,6 +122,7 @@ export async function parseDocumentApi(documentName: string, documentType: strin
     };
   }
 }
+
 
 export async function analyzeGithubRepoApi(githubUrl: string, expectedRequirements: SoftwareRequirement[]) {
   return apiFetch('/api/github/analyze', {

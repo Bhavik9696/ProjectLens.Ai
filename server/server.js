@@ -18,9 +18,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const allowedOrigins = [
+  // CLIENT_ORIGIN: comma-separated list for local/CI overrides
   ...(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
     .split(',')
     .map((o) => o.trim()),
+  // CLIENT_URL: single production frontend URL set in Render/Vercel env vars
+  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL.trim()] : []),
   'http://localhost:5174',  // Vite fallback port when 5173 is taken
   'http://localhost:5175',  // extra fallback
 ];
@@ -35,7 +38,12 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
-// Health check
+// Root health check (used by Render, uptime monitors, etc.)
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', message: 'ProjectLens AI backend is running' });
+});
+
+// Health check (legacy path kept for compatibility)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

@@ -4,6 +4,8 @@ import { createPaymentOrderApi, verifyPaymentApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 interface CreditPack {
   id: string;
   credits: number;
@@ -51,7 +53,7 @@ export const BuyCreditsModal: React.FC<BuyCreditsModalProps> = ({ isOpen, onClos
   // Ask the server which mode it's in (simulation vs live)
   useEffect(() => {
     if (!isOpen) return;
-    fetch('/api/payments/mode', {
+    fetch(`${API_URL}/api/payments/mode`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('projectlens-token') || ''}` },
     })
       .then((r) => r.json())

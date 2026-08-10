@@ -1,4 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 import {
   ArrowRight,
   Play,
@@ -234,7 +236,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
 
   // Fetch payment mode once (simulation vs live)
   useEffect(() => {
-    fetch('/api/payments/mode')
+    fetch(`${API_URL}/api/payments/mode`)
       .then((r) => r.json())
       .then((d) => setPaymentMode(d.mode))
       .catch(() => setPaymentMode('simulation'));
