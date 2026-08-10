@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ProjectIntelligenceData } from '../types';
 import { ProjectSearch } from './ProjectSearch';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   Plus,
   FileText,
-  ShieldCheck,
   GitBranch,
   Table,
   Cpu,
@@ -22,6 +21,8 @@ import {
   LogOut,
   Zap,
   Gift,
+  Menu,
+  X,
 } from 'lucide-react';
 import { AuthUser } from '../services/authApi';
 
@@ -53,6 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   user,
 }) => {
   const { theme, toggleTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const healthRating = currentProject?.healthMetrics?.healthRating || 'Healthy';
   const overallScore = currentProject?.healthMetrics?.overallScore ?? 0;
 
@@ -93,70 +95,63 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const navTabs = [
-    { id: 'dashboard', label: 'Dashboard',               icon: BarChart3 },
-    { id: 'rtm',       label: 'Traceability Matrix (RTM)', icon: Table     },
-    { id: 'coverage',  label: 'Coverage Engine',         icon: Cpu       },
-    { id: 'documents', label: 'SRS & Documents',         icon: FileText  },
-    { id: 'github',    label: 'GitHub Repository',       icon: GitBranch },
-    { id: 'copilot',   label: 'AI Copilot',              icon: Bot       },
+    { id: 'dashboard', label: 'Dashboard',   shortLabel: 'Dash',     icon: BarChart3 },
+    { id: 'rtm',       label: 'RTM',         shortLabel: 'RTM',      icon: Table     },
+    { id: 'coverage',  label: 'Coverage',    shortLabel: 'Coverage', icon: Cpu       },
+    { id: 'documents', label: 'Documents',   shortLabel: 'Docs',     icon: FileText  },
+    { id: 'github',    label: 'GitHub',      shortLabel: 'GitHub',   icon: GitBranch },
+    { id: 'copilot',   label: 'AI Copilot',  shortLabel: 'Copilot',  icon: Bot       },
   ];
 
   return (
-    <header className="bg-[var(--panel)]/90 backdrop-blur-md border-b border-[var(--border)] text-[var(--text-1)] sticky top-0 z-30 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
-      {/* Top Header Row */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Brand Logo & Name */}
-          <div className="flex items-center gap-3">
+    <header className="bg-[var(--panel)]/95 backdrop-blur-md border-b border-[var(--border)] text-[var(--text-1)] sticky top-0 z-30 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+      {/* ── Top Header Row ── */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+
+          {/* Brand */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/15 border border-[var(--accent)]/30 flex items-center justify-center shadow-[0_0_12px_rgba(214,255,63,0.2)]">
               <Radar className="w-4 h-4 text-[var(--accent)]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base tracking-tight text-[var(--text-1)]">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-sm sm:text-base tracking-tight text-[var(--text-1)]">
                   ProjectLens<span className="text-[var(--accent)]"> AI</span>
                 </span>
-                <span className="text-[10px] font-mono uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20">
+                <span className="text-[9px] font-mono uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 hidden xs:inline">
                   SYNCED
                 </span>
               </div>
-              <p className="text-[11px] text-[var(--text-4)] hidden sm:block">
-                Software Specification vs GitHub Traceability Engine
-              </p>
             </div>
           </div>
 
-          {/* Project Selector & Actions */}
-          <div className="flex items-center gap-2">
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center gap-2 flex-1 justify-end">
             {/* Health Badge */}
             <div className="hidden lg:block">{getHealthBadge()}</div>
 
-            {/* Search / Jump to Project */}
+            {/* Project Search */}
             <ProjectSearch projects={projects} currentProject={currentProject} onSelectProject={onSelectProject} />
 
-            {/* ── Buy Credits Button (always visible when authenticated) ── */}
+            {/* Buy Credits */}
             {user && (
               <button
                 id="navbar-buy-credits-btn"
                 onClick={onBuyCredits}
                 title="Buy Project Credits"
-                className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer relative group"
+                className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer"
                 style={{
                   background:  hasCredits ? 'rgba(214,255,63,0.06)' : 'rgba(244,63,94,0.08)',
                   borderColor: hasCredits ? 'rgba(214,255,63,0.3)'  : 'rgba(244,63,94,0.4)',
                   color:       hasCredits ? 'var(--accent)'         : '#f87171',
-                  boxShadow:   hasCredits ? '0 0 12px rgba(214,255,63,0.08)' : '0 0 12px rgba(244,63,94,0.12)',
                 }}
               >
                 <Zap className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="hidden sm:inline">Buy Credits</span>
-                {/* Credit counter pill */}
+                <span>Buy Credits</span>
                 <span
-                  className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full ml-0.5"
-                  style={{
-                    background: 'rgba(0,0,0,0.25)',
-                    color: hasCredits ? 'var(--accent)' : '#f87171',
-                  }}
+                  className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full ml-0.5 hidden lg:inline-flex"
+                  style={{ background: 'rgba(0,0,0,0.25)', color: hasCredits ? 'var(--accent)' : '#f87171' }}
                 >
                   <Gift className="w-2.5 h-2.5" />{freeRemaining}
                   <span style={{ opacity: 0.5 }}>·</span>
@@ -169,85 +164,179 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="theme-toggle-btn"
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              aria-label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-[var(--surface-3)] text-[var(--text-4)] hover:text-[var(--accent)] border border-[var(--border-2)] hover:border-[var(--accent)]/40 hover:shadow-[0_0_12px_rgba(214,255,63,0.15)] cursor-pointer flex-shrink-0"
+              title={theme === 'dark' ? 'Light' : 'Dark'}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-[var(--surface-3)] text-[var(--text-4)] hover:text-[var(--accent)] border border-[var(--border-2)] cursor-pointer flex-shrink-0"
             >
-              {theme === 'dark' ? (
-                <Sun className="w-3.5 h-3.5" />
-              ) : (
-                <Moon className="w-3.5 h-3.5" />
-              )}
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
 
-            {/* Delete Current Project */}
+            {/* Delete */}
             {currentProject && onDeleteProject && (
               <button
                 onClick={() => {
-                  if (window.confirm(`Delete project "${currentProject.project.name}"? This cannot be undone.`)) {
+                  if (window.confirm(`Delete project "${currentProject.project.name}"?`)) {
                     onDeleteProject(currentProject.project.id);
                   }
                 }}
                 title="Delete Project"
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-rose-950/60 text-[var(--text-4)] hover:text-rose-400 border border-[var(--border-2)] hover:border-rose-500/40 cursor-pointer"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-rose-950/60 text-[var(--text-4)] hover:text-rose-400 border border-[var(--border-2)] cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
 
-            {/* New Project Button */}
+            {/* New Project */}
             <button
               onClick={onOpenNewProject}
               className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-[var(--accent)] hover:brightness-110 text-black transition-all shadow-[0_0_20px_-4px_var(--accent)] cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">New Project</span>
+              New Project
             </button>
 
-            {/* Export Report Button */}
+            {/* Export Report */}
             <button
               onClick={onOpenReportModal}
               disabled={!currentProject}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--panel)] hover:bg-[var(--surface-3)] text-[var(--text-2)] border border-[var(--border-2)] transition-colors disabled:opacity-40 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-[var(--accent)]" />
-              <span className="hidden sm:inline">Export Report</span>
+              Export
             </button>
 
-            {/* User avatar + Sign Out */}
+            {/* Avatar + Sign Out */}
             {user && (
-              <div className="flex items-center gap-2 ml-1">
-                {/* Avatar initial */}
+              <div className="flex items-center gap-1.5">
                 <div
                   title={user.name}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 select-none"
-                  style={{
-                    background: 'var(--accent)',
-                    color: '#000',
-                    boxShadow: '0 0 12px rgba(214,255,63,0.3)',
-                  }}
+                  style={{ background: 'var(--accent)', color: '#000', boxShadow: '0 0 12px rgba(214,255,63,0.3)' }}
                 >
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                {/* Sign Out */}
                 <button
                   id="navbar-signout-btn"
                   onClick={onSignOut}
                   title="Sign Out"
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-rose-950/60 text-[var(--text-4)] hover:text-rose-400 border border-[var(--border-2)] hover:border-rose-500/40 cursor-pointer transition-colors"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-rose-950/60 text-[var(--text-4)] hover:text-rose-400 border border-[var(--border-2)] cursor-pointer transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
           </div>
+
+          {/* Mobile: essential actions + hamburger */}
+          <div className="flex md:hidden items-center gap-1.5 flex-shrink-0">
+            {/* New Project — always visible, icon only */}
+            <button
+              onClick={onOpenNewProject}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--accent)] hover:brightness-110 text-black transition-all shadow-[0_0_16px_-4px_var(--accent)] cursor-pointer flex-shrink-0"
+              title="New Project"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+
+            {/* User avatar */}
+            {user && (
+              <div
+                title={user.name}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 select-none"
+                style={{ background: 'var(--accent)', color: '#000' }}
+              >
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+
+            {/* Hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--panel)] border border-[var(--border-2)] text-[var(--text-3)] cursor-pointer"
+              aria-label="Menu"
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Navigation Tabs Bar */}
+      {/* ── Mobile Dropdown Menu ── */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-[var(--border)] bg-[var(--panel)] px-4 py-3 space-y-2">
+          {/* Project search */}
+          <ProjectSearch projects={projects} currentProject={currentProject} onSelectProject={(id) => { onSelectProject(id); setMobileMenuOpen(false); }} />
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {/* Buy Credits */}
+            {user && (
+              <button
+                onClick={() => { onBuyCredits?.(); setMobileMenuOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border cursor-pointer"
+                style={{
+                  background:  hasCredits ? 'rgba(214,255,63,0.06)' : 'rgba(244,63,94,0.08)',
+                  borderColor: hasCredits ? 'rgba(214,255,63,0.3)'  : 'rgba(244,63,94,0.4)',
+                  color:       hasCredits ? 'var(--accent)'         : '#f87171',
+                }}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Buy Credits</span>
+                <span className="ml-auto font-mono text-[10px]">{freeRemaining}·{paidCredits}</span>
+              </button>
+            )}
+
+            {/* Theme */}
+            <button
+              onClick={() => { toggleTheme(); setMobileMenuOpen(false); }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold bg-[var(--bg)] border border-[var(--border-2)] text-[var(--text-3)] cursor-pointer"
+            >
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-[var(--accent)]" /> : <Moon className="w-3.5 h-3.5 text-[var(--accent)]" />}
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </button>
+
+            {/* Export */}
+            <button
+              onClick={() => { onOpenReportModal(); setMobileMenuOpen(false); }}
+              disabled={!currentProject}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold bg-[var(--bg)] border border-[var(--border-2)] text-[var(--text-3)] cursor-pointer disabled:opacity-40"
+            >
+              <Download className="w-3.5 h-3.5 text-[var(--accent)]" />
+              Export Report
+            </button>
+
+            {/* Delete */}
+            {currentProject && onDeleteProject && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Delete "${currentProject.project.name}"?`)) {
+                    onDeleteProject(currentProject.project.id);
+                    setMobileMenuOpen(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold bg-rose-950/30 border border-rose-500/30 text-rose-400 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Project
+              </button>
+            )}
+
+            {/* Sign Out */}
+            {user && (
+              <button
+                onClick={() => { onSignOut?.(); setMobileMenuOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold bg-[var(--bg)] border border-[var(--border-2)] text-rose-400 cursor-pointer col-span-2"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign Out ({user.name})
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Navigation Tabs ── */}
       <div className="bg-[var(--bg)]/80 border-t border-[var(--border)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-1 sm:space-x-3 overflow-x-auto py-2 scrollbar-none">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+          <nav className="flex overflow-x-auto py-1.5 sm:py-2 gap-0.5 sm:gap-1 scrollbar-none">
             {navTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -255,23 +344,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer flex-shrink-0 ${
                     isActive
                       ? 'bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 font-semibold shadow-[0_0_12px_rgba(214,255,63,0.12)]'
                       : 'text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--panel)]/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--accent)]' : 'text-[var(--text-5)]'}`} />
-                  {tab.label}
+                  <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${isActive ? 'text-[var(--accent)]' : 'text-[var(--text-5)]'}`} />
+                  {/* Short label on mobile, full label on sm+ */}
+                  <span className="sm:hidden">{tab.shortLabel}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
                   {tab.id === 'rtm' && (
-                    <span className="ml-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-[var(--panel)] text-[var(--accent)] border border-[var(--accent)]/20">
+                    <span className="text-[9px] font-mono px-1 py-0.5 rounded-full bg-[var(--panel)] text-[var(--accent)] border border-[var(--accent)]/20 hidden sm:inline">
                       {currentProject?.requirements?.length || 0}
                     </span>
                   )}
                   {tab.id === 'copilot' && (
-                    <span className="relative flex h-2 w-2">
+                    <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent)]"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-[var(--accent)]"></span>
                     </span>
                   )}
                 </button>
