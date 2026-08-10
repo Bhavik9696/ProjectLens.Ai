@@ -21,6 +21,11 @@ import {
   Loader2,
   Menu,
   X,
+  Lock,
+  Shield,
+  EyeOff,
+  Ban,
+  ArrowDown,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,9 +65,10 @@ function getTokens(isDark: boolean): React.CSSProperties {
 }
 
 const NAV_LINKS = [
-  { label: 'Features',    href: '#features'  },
+  { label: 'Features',    href: '#features'    },
+  { label: 'Privacy',     href: '#privacy'     },
   { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Pricing',     href: '#pricing'   },
+  { label: 'Pricing',     href: '#pricing'     },
 ];
 
 const INTEGRATIONS = [
@@ -562,6 +568,187 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               <p className="text-[13px] text-[var(--lens-text-dim)] leading-relaxed">{desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Privacy & Security Section                                       */}
+      {/* ---------------------------------------------------------------- */}
+      <section id="privacy" className="max-w-6xl mx-auto px-4 sm:px-6 py-24 scroll-mt-24">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--lens-accent)]/30 bg-[var(--lens-accent)]/8 px-4 py-1.5 text-[11px] font-mono tracking-[0.18em] text-[var(--lens-accent)] mb-6">
+            <Lock className="w-3 h-3" />
+            YOUR CODE. YOUR DATA. PROTECTED.
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-5">
+            Privacy-first AI analysis
+            <br />
+            <span className="text-[var(--lens-accent)]">for your codebase</span>
+          </h2>
+          <p className="max-w-2xl mx-auto text-[15px] text-[var(--lens-text-dim)] leading-relaxed">
+            ProjectLens AI uses privacy-first RAG to analyze only the repository evidence relevant to
+            each requirement. Your entire codebase is never blindly sent to an AI model.
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-10 items-start">
+
+          {/* Left — pipeline visual */}
+          <div className="rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)] p-7 relative overflow-hidden">
+            {/* Subtle glow behind pipeline */}
+            <div className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 rounded-full bg-[var(--lens-accent)]/6 blur-3xl" />
+
+            <p className="text-[11px] font-mono tracking-[0.18em] text-[var(--lens-accent)] mb-7">ANALYSIS PIPELINE</p>
+
+            {/* Pipeline steps */}
+            {[
+              { label: 'Your Repository',           note: 'File tree, commits, pull requests' },
+              { label: 'Local Processing',           note: 'File classification, code graph build' },
+              { label: 'Secret Detection',           note: '.env, API keys, tokens, credentials' },
+              { label: 'Relevant Evidence Retrieval',note: 'Requirement-specific RAG retrieval' },
+              { label: 'Sensitive Data Redaction',   note: 'Keys, passwords, secrets replaced' },
+              { label: 'AI Analysis',                note: 'Only relevant evidence sent to model' },
+            ].map((step, idx, arr) => (
+              <div key={step.label} className="relative">
+                <div className="flex items-start gap-4">
+                  {/* Connector line */}
+                  <div className="flex flex-col items-center">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold border flex-shrink-0"
+                      style={{
+                        background: idx === arr.length - 1
+                          ? 'var(--lens-accent)'
+                          : idx === 2 || idx === 4
+                          ? 'rgba(214,255,63,0.15)'
+                          : 'var(--lens-panel-2)',
+                        borderColor: idx === arr.length - 1
+                          ? 'var(--lens-accent)'
+                          : 'var(--lens-border)',
+                        color: idx === arr.length - 1 ? '#000' : 'var(--lens-accent)',
+                      }}
+                    >
+                      {idx === arr.length - 1
+                        ? <Sparkles className="w-3.5 h-3.5" />
+                        : idx === 2 || idx === 4
+                        ? <Shield className="w-3.5 h-3.5" />
+                        : <span>{idx + 1}</span>}
+                    </div>
+                    {idx < arr.length - 1 && (
+                      <div className="w-px flex-1 my-1" style={{ minHeight: '24px', background: 'var(--lens-border)' }} />
+                    )}
+                  </div>
+                  {/* Step content */}
+                  <div className="pb-5">
+                    <p className="font-semibold text-[14px]" style={{ color: 'var(--lens-text)' }}>
+                      {step.label}
+                    </p>
+                    <p className="text-[12px] mt-0.5" style={{ color: 'var(--lens-text-dim)' }}>
+                      {step.note}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Redaction visual */}
+            <div className="mt-2 rounded-xl border border-[var(--lens-border)] bg-[var(--lens-bg)]/60 p-4 font-mono text-[12px] leading-6 overflow-x-auto">
+              <p className="text-[10px] font-sans tracking-[0.15em] text-[var(--lens-text-dim)] mb-3">SECRET REDACTION EXAMPLE</p>
+              <div className="space-y-1">
+                <div className="flex gap-3">
+                  <span className="text-red-400/70 select-none">─</span>
+                  <span style={{ color: 'var(--lens-text-dim)' }}>DATABASE_URL=mongodb+srv://username:<span className="text-red-400/80">p4ssw0rd</span>@cluster0…</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-red-400/70 select-none">─</span>
+                  <span style={{ color: 'var(--lens-text-dim)' }}>API_KEY=sk-<span className="text-red-400/80">live_abc123xyz</span></span>
+                </div>
+                <div className="mt-2 pt-2 border-t border-[var(--lens-border)] space-y-1">
+                  <div className="flex gap-3">
+                    <span className="text-[var(--lens-accent)] select-none">+</span>
+                    <span style={{ color: 'var(--lens-text)' }}>DATABASE_URL=mongodb+srv://username:<span className="font-bold text-[var(--lens-accent)]">[REDACTED]</span>@cluster0…</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-[var(--lens-accent)] select-none">+</span>
+                    <span style={{ color: 'var(--lens-text)' }}>API_KEY=<span className="font-bold text-[var(--lens-accent)]">[API_KEY_REDACTED]</span></span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-[var(--lens-accent)] select-none">+</span>
+                    <span style={{ color: 'var(--lens-text)' }}>JWT_SECRET=<span className="font-bold text-[var(--lens-accent)]">[REDACTED]</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right — cards + trust statement */}
+          <div className="flex flex-col gap-4">
+            {/* 4 security cards */}
+            {[
+              {
+                Icon: ShieldCheck,
+                title: 'Privacy-First RAG',
+                desc: 'Only the code and evidence relevant to a specific requirement is selected for AI analysis. Unrelated files are never included.',
+              },
+              {
+                Icon: Lock,
+                title: 'Secret Detection & Redaction',
+                desc: 'API keys, passwords, tokens, database credentials, JWT secrets, private keys, and .env files are detected and redacted before any AI processing.',
+              },
+              {
+                Icon: Sparkles,
+                title: 'Evidence-Based AI',
+                desc: 'AI analyzes relevant files, functions, APIs, services, models, and tests — instead of processing the entire repository blindly.',
+              },
+              {
+                Icon: Ban,
+                title: 'Minimum Necessary Data',
+                desc: 'Unrelated source code and sensitive repository data are excluded. Only the minimum evidence required to evaluate a requirement is processed.',
+              },
+            ].map(({ Icon, title, desc }) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)] p-5 flex gap-4 hover:border-[var(--lens-accent)]/40 transition-colors group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[var(--lens-accent)]/10 border border-[var(--lens-accent)]/25 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-[var(--lens-accent)]/20 transition-colors">
+                  <Icon className="w-5 h-5 text-[var(--lens-accent)]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[14px] mb-1" style={{ color: 'var(--lens-text)' }}>{title}</h3>
+                  <p className="text-[13px] leading-relaxed" style={{ color: 'var(--lens-text-dim)' }}>{desc}</p>
+                </div>
+              </div>
+            ))}
+
+            {/* Trust statement */}
+            <div className="rounded-2xl border border-[var(--lens-accent)]/25 bg-[var(--lens-accent)]/6 p-5 relative overflow-hidden">
+              <div className="pointer-events-none absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-[var(--lens-accent)]/10 blur-2xl" />
+              <p className="text-[13px] leading-relaxed relative z-10" style={{ color: 'var(--lens-text)' }}>
+                <span className="font-bold text-[var(--lens-accent)]">Minimum-data approach:</span>{' '}
+                only the evidence required to answer a specific requirement is processed by the AI.
+                Entire codebases, unrelated modules, and sensitive credentials are excluded by design.
+              </p>
+            </div>
+
+            {/* Trust badge row */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[
+                { emoji: '🔐', label: 'Privacy First' },
+                { emoji: '🧠', label: 'RAG-Powered' },
+                { emoji: '🚫', label: 'Secret Redaction' },
+                { emoji: '📁', label: 'Evidence-Based' },
+              ].map(({ emoji, label }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--lens-border)] bg-[var(--lens-panel)] px-3.5 py-1.5 text-[12px] font-semibold"
+                  style={{ color: 'var(--lens-text-dim)' }}
+                >
+                  <span className="text-[13px]">{emoji}</span>
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
