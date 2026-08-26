@@ -78,7 +78,8 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     if (type === 'healthcare') {
       setDocName('Patient Healthcare Portal SRS');
       setDocType('SRS');
-      setFileType('PDF');
+      setFileType('TXT');
+      setPdfBase64(null);
       setRawText(`Software Requirement Specification: Patient Healthcare System
 
 Module 1: Patient Management & Onboarding
@@ -93,6 +94,7 @@ Module 2: Prescriptions & Billing
       setDocName('Global E-Commerce Logistics SRS');
       setDocType('SRS');
       setFileType('DOCX');
+      setPdfBase64(null);
       setRawText(`Software Requirement Specification: E-Commerce & Inventory System
 
 Module 1: Customer Storefront
@@ -107,6 +109,7 @@ Module 2: Merchant Inventory & Fulfillment
       setDocName('FinTech Digital Wallet SRS');
       setDocType('SRS');
       setFileType('TXT');
+      setPdfBase64(null);
       setRawText(`Software Requirement Specification: FinTech Wallet System
 
 Module 1: Core Banking & Transactions
@@ -124,8 +127,14 @@ Module 2: Payment Gateway & Security
     e.preventDefault();
 
     const isPdf = fileType === 'PDF';
-    if (isPdf && !pdfBase64) return; // PDF not yet loaded
-    if (!isPdf && !rawText.trim()) return; // text not yet loaded
+    if (isPdf && !pdfBase64) {
+      alert('Please select a PDF file first using the "Choose File" button above.');
+      return;
+    }
+    if (!isPdf && !rawText.trim()) {
+      alert('Please paste or type document content in the text area, or select a file.');
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -317,10 +326,9 @@ Module 2: Payment Gateway & Security
                 </label>
                 <textarea
                   rows={4}
-                  required
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
-                  placeholder="Paste section details, features, deliverables, APIs expected..."
+                  placeholder={fileType === 'PDF' ? 'PDF content will be extracted automatically after choosing a file above. Or paste text here to override.' : 'Paste section details, features, deliverables, APIs expected...'}
                   className="w-full bg-[var(--surface-4)] border border-[var(--border-2)] rounded-lg p-2.5 text-xs text-[var(--text-2)] focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-[var(--text-6)] resize-none font-mono"
                 />
               </div>
