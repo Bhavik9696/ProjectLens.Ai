@@ -68,6 +68,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
 
   const { project, requirements, analysisResults, healthMetrics, implementationProfile } = data;
 
+  // Feature 3: Getting Started checklist steps
+  const checklistSteps = [
+    {
+      id: 'project',
+      label: 'Create a Project',
+      done: true, // always done if we're on the dashboard with a project
+      tab: 'dashboard',
+    },
+    {
+      id: 'documents',
+      label: 'Upload Documents',
+      done: data.documents.length > 0,
+      tab: 'documents',
+    },
+    {
+      id: 'github',
+      label: 'Connect GitHub Repository',
+      done: !!data.implementationProfile,
+      tab: 'github',
+    },
+    {
+      id: 'analysis',
+      label: 'Run Coverage Analysis',
+      done: data.analysisResults.some((r) => r.coveragePercent > 0),
+      tab: 'rtm',
+    },
+  ];
+  const completedCount = checklistSteps.filter((s) => s.done).length;
+  const allDone = completedCount === checklistSteps.length;
+
   // Prepare chart data
   const chartData = analysisResults.map((r) => ({
     name: r.module,
@@ -90,6 +120,72 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
 
   return (
     <div className="space-y-6">
+      {/* ── Feature 3: Getting Started Checklist ─────────────────────────── */}
+      {!allDone && (
+        <div
+          className="rounded-2xl border p-5 space-y-4 relative overflow-hidden"
+          style={{ background: 'var(--panel)', borderColor: 'rgba(214,255,63,0.2)' }}
+        >
+          {/* Glow */}
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(214,255,63,0.07) 0%, transparent 70%)', filter: 'blur(16px)' }} />
+
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <h3 className="text-sm font-bold" style={{ color: 'var(--text-1)' }}>
+                🚀 Getting Started
+              </h3>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-4)' }}>
+                {completedCount} of {checklistSteps.length} steps complete
+              </p>
+            </div>
+            <span className="text-xs font-mono font-bold" style={{ color: 'var(--accent)' }}>
+              {Math.round((completedCount / checklistSteps.length) * 100)}%
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-1.5 rounded-full relative z-10" style={{ background: 'var(--surface-5)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${(completedCount / checklistSteps.length) * 100}%`, background: 'var(--accent)' }}
+            />
+          </div>
+
+          {/* Steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 relative z-10">
+            {checklistSteps.map((step, i) => (
+              <button
+                key={step.id}
+                onClick={() => onNavigateTab(step.tab)}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer"
+                style={{
+                  background: step.done ? 'rgba(16,185,129,0.06)' : 'var(--bg)',
+                  borderColor: step.done ? 'rgba(16,185,129,0.25)' : 'var(--border)',
+                }}
+              >
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold border"
+                  style={{
+                    background: step.done ? '#10b981' : 'var(--surface-3)',
+                    borderColor: step.done ? '#10b981' : 'var(--border-2)',
+                    color: step.done ? '#000' : 'var(--text-5)',
+                  }}
+                >
+                  {step.done ? '✓' : i + 1}
+                </div>
+                <span
+                  className="text-xs font-semibold"
+                  style={{ color: step.done ? '#10b981' : 'var(--text-3)' }}
+                >
+                  {step.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Credit Status Banner ─────────────────────────────────────────── */}
       <div
         className="rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden"

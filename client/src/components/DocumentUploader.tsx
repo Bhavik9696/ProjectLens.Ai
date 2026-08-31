@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ProjectDocument, SoftwareRequirement } from '../types';
 import { parseDocumentApi } from '../services/api';
+import { DocumentPreviewModal } from './DocumentPreviewModal';
 import {
   FileText,
   Upload,
@@ -13,6 +14,7 @@ import {
   AlertCircle,
   Plus,
   Trash2,
+  Eye,
 } from 'lucide-react';
 
 interface DocumentUploaderProps {
@@ -34,6 +36,8 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const [rawText, setRawText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(documents[0]?.id || null);
+  // Feature 8: document preview
+  const [previewDoc, setPreviewDoc] = useState<ProjectDocument | null>(null);
 
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
 
@@ -385,16 +389,29 @@ Module 2: Payment Gateway & Security
                       </div>
                     </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveDocument(doc.id);
-                      }}
-                      className="text-[var(--text-5)] hover:text-rose-400 p-1 transition-colors"
-                      title="Remove Document"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Preview button — Feature 8 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewDoc(doc);
+                        }}
+                        className="text-[var(--text-5)] hover:text-[var(--accent)] p-1 transition-colors"
+                        title="Preview Document"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveDocument(doc.id);
+                        }}
+                        className="text-[var(--text-5)] hover:text-rose-400 p-1 transition-colors"
+                        title="Remove Document"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -542,6 +559,13 @@ Module 2: Payment Gateway & Security
           </div>
         </div>
       </div>
+
+      {/* Feature 8: Document Preview Modal */}
+      <DocumentPreviewModal
+        document={previewDoc}
+        requirements={requirements}
+        onClose={() => setPreviewDoc(null)}
+      />
     </div>
   );
 };

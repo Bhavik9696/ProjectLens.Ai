@@ -27,6 +27,7 @@ interface TraceabilityMatrixProps {
 
 export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
   analysisResults = [],
+  onSelectRequirement,
 }) => {
   const safeResults = analysisResults || [];
   const [searchQuery, setSearchQuery]       = useState('');
@@ -319,6 +320,7 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                     <th className="py-3 px-4">Commit / PR</th>
                     <th className="py-3 px-4 text-center">Cov.</th>
                     <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-2 text-center">Detail</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -385,6 +387,18 @@ export const TraceabilityMatrix: React.FC<TraceabilityMatrixProps> = ({
                             </span>
                           </td>
                           <td className="py-3.5 px-4 whitespace-nowrap">{getStatusBadge(r.status)}</td>
+                          <td className="py-3.5 px-2 text-center">
+                            {onSelectRequirement && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onSelectRequirement(r.requirementId); }}
+                                title="Open requirement detail"
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-all cursor-pointer"
+                                style={{ background: 'var(--bg)', borderColor: 'var(--border-2)', color: 'var(--text-5)' }}
+                              >
+                                <ChevronDown className="w-3.5 h-3.5 rotate-[-90deg]" />
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       );
                     })

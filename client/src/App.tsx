@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ProjectIntelligenceData, Project, ProjectDocument, SoftwareRequirement, ImplementationProfile, ChatMessage } from './types';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ProjectIntelligenceData, Project, ProjectDocument, RequirementAnalysisResult, SoftwareRequirement, ImplementationProfile, ChatMessage } from './types';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
 import { SignInPage } from './components/SignInPage';
@@ -19,6 +19,14 @@ import { ScopeCreepPanel } from './components/ScopeCreepPanel';
 import { TestCoverageReport } from './components/TestCoverageReport';
 import { AnalysisHistory } from './components/AnalysisHistory';
 import { ProjectSettingsModal } from './components/ProjectSettingsModal';
+// ── New Feature Imports ──────────────────────────────────────────────
+import { OnboardingTour } from './components/OnboardingTour';
+import { CommandPalette } from './components/CommandPalette';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { RequirementDrawer } from './components/RequirementDrawer';
+import { FloatingCopilot } from './components/FloatingCopilot';
+import { useCommandPalette } from './contexts/CommandPaletteContext';
+import { useNotifications } from './contexts/NotificationContext';
 import {
   fetchProjectsApi,
   createProjectApi,
@@ -32,6 +40,8 @@ import { useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 type AppView = 'landing' | 'signin' | 'signup' | 'forgot-password' | 'reset-password' | 'app';
+
+const NAV_TAB_IDS = ['dashboard','rtm','coverage','documents','github','copilot','scope','tests','history'];
 
 export default function App() {
   const { user, isLoading: authLoading, signOut, refreshCredits, loginWithToken } = useAuth();
@@ -47,6 +57,71 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { showToast } = useToast();
+  // ── Feature 2: Command Palette ───────────────────────────────────────
+  const { open: openPalette } = useCommandPalette();
+  // ── Feature 4: Notifications ─────────────────────────────────────────
+  const { addNotification } = useNotifications();
+  // ── Feature 5: Keyboard Shortcuts Modal ─────────────────────────────
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
+  // ── Feature 6: Requirement Drawer ───────────────────────────────────
+  const [selectedRequirement, setSelectedRequirement] = useState<RequirementAnalysisResult | null>(null);
+  // Ref used to pre-fill copilot query from the drawer's "Ask Copilot" button
+  const copilotPrefilledQuery = useRef<string | null>(null);
+
+  // ── Feature 5: Global Keyboard Shortcuts ──────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't fire shortcuts when typing in an input/textarea/select
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      // Ctrl+K / Cmd+K → Command Palette
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        openPalette();
+        return;
+      }
+
+      // ? → Keyboard Shortcuts Modal
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setIsShortcutsModalOpen(true);
+        return;
+      }
+
+      // Alt+1-9 → Switch to nav tab by index
+      if (e.altKey && /^[1-9]$/.test(e.key)) {
+        e.preventDefault();
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < NAV_TAB_IDS.length) setActiveTab(NAV_TAB_IDS[idx]);
+        return;
+      }
+
+      // Alt+N → New Project
+      if (e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setIsNewProjectModalOpen(true);
+        return;
+      }
+
+      // Alt+R → Report Modal
+      if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        setIsReportModalOpen(true);
+        return;
+      }
+
+      // Alt+C → AI Copilot
+      if (e.altKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        setActiveTab('copilot');
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openPalette]);
 
   // On mount: check for URL params —
   //   ?token=      → password reset flow
@@ -159,6 +234,13 @@ export default function App() {
       setCurrentProjectId(created.project.id);
       setActiveTab('documents');
       showToast(`Project "${created.project.name}" created`, 'success');
+      // Feature 4: fire notification
+      addNotification({
+        type: 'success',
+        title: 'Project Created',
+        message: `"${created.project.name}" created successfully. Upload documents to get started.`,
+        tab: 'documents',
+      });
       // Refresh credit state after a project is consumed
       await refreshCredits();
     } catch (err: any) {
@@ -317,6 +399,22 @@ export default function App() {
         healthMetrics: evalRes.healthMetrics,
       });
       showToast(`Repository analyzed — ${evalRes.healthMetrics.overallScore}% overall health`, 'success');
+      // Feature 4: analysis complete notification
+      addNotification({
+        type: 'success',
+        title: 'Analysis Complete',
+        message: `${profile.repoName} analyzed — ${evalRes.healthMetrics.overallScore}% overall health score.`,
+        tab: 'coverage',
+      });
+      // Feature 4: scope creep notification if detected
+      if (evalRes.healthMetrics.scopeCreep && evalRes.healthMetrics.scopeCreep.length > 0) {
+        addNotification({
+          type: 'warning',
+          title: 'Scope Creep Detected',
+          message: `${evalRes.healthMetrics.scopeCreep.length} out-of-scope feature(s) detected in your codebase.`,
+          tab: 'scope',
+        });
+      }
     } catch (err) {
       updateCurrentProjectData((prev) => ({
         ...prev,
@@ -459,6 +557,8 @@ export default function App() {
         onSignOut={handleSignOut}
         onBuyCredits={() => setIsBuyCreditsModalOpen(true)}
         user={user}
+        onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
+        onNavigateTab={setActiveTab}
       />
 
       {/* Main View Container */}
@@ -477,7 +577,13 @@ export default function App() {
             (no null-check), which threw a runtime error whenever the project
             list was empty. They now render an empty-state instead of crashing. */}
         {activeTab === 'rtm' && (
-          <TraceabilityMatrix analysisResults={currentProjectData?.analysisResults || []} />
+          <TraceabilityMatrix
+            analysisResults={currentProjectData?.analysisResults || []}
+            onSelectRequirement={(reqId) => {
+              const found = currentProjectData?.analysisResults.find((r) => r.requirementId === reqId) || null;
+              setSelectedRequirement(found);
+            }}
+          />
         )}
 
         {activeTab === 'coverage' && (
@@ -578,6 +684,45 @@ export default function App() {
           }}
         />
       )}
+
+      {/* ── Feature 1: Onboarding Tour ──────────────────────────────── */}
+      <OnboardingTour />
+
+      {/* ── Feature 2: Command Palette ─────────────────────────────── */}
+      <CommandPalette
+        projects={projectsData}
+        currentProjectId={currentProjectId}
+        onSelectProject={(id) => setCurrentProjectId(id)}
+        onNavigateTab={setActiveTab}
+        onOpenNewProject={() => setIsNewProjectModalOpen(true)}
+        onOpenReport={() => setIsReportModalOpen(true)}
+        onBuyCredits={() => setIsBuyCreditsModalOpen(true)}
+        onSignOut={handleSignOut}
+        onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
+      />
+
+      {/* ── Feature 5: Keyboard Shortcuts Modal ─────────────────────── */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
+
+      {/* ── Feature 6: Requirement Detail Drawer ────────────────────── */}
+      <RequirementDrawer
+        result={selectedRequirement}
+        onClose={() => setSelectedRequirement(null)}
+        onAskCopilot={(query) => {
+          copilotPrefilledQuery.current = query;
+          setActiveTab('copilot');
+          setSelectedRequirement(null);
+        }}
+      />
+
+      {/* ── Feature 7: Floating Copilot Button ──────────────────────── */}
+      <FloatingCopilot
+        activeTab={activeTab}
+        onNavigateCopilot={() => setActiveTab('copilot')}
+      />
     </div>
   );
 }

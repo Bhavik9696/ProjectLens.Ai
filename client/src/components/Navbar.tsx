@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { ProjectIntelligenceData } from '../types';
 import { ProjectSearch } from './ProjectSearch';
 import { useTheme } from '../contexts/ThemeContext';
+import { NotificationBell, NotificationPanel } from './NotificationPanel';
+import { useNotifications } from '../contexts/NotificationContext';
+import { useCommandPalette } from '../contexts/CommandPaletteContext';
 import {
   Plus,
   FileText,
@@ -27,6 +30,8 @@ import {
   FlaskConical,
   History,
   Settings2,
+  Keyboard,
+  Search,
 } from 'lucide-react';
 import { AuthUser } from '../services/authApi';
 
@@ -43,6 +48,9 @@ interface NavbarProps {
   onSignOut?: () => void;
   onBuyCredits?: () => void;
   user?: AuthUser | null;
+  // New feature props
+  onOpenShortcuts?: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -58,9 +66,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSignOut,
   onBuyCredits,
   user,
+  onOpenShortcuts,
+  onNavigateTab,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const { unreadCount } = useNotifications();
+  const { open: openPalette } = useCommandPalette();
   const healthRating = currentProject?.healthMetrics?.healthRating || 'Healthy';
   const overallScore = currentProject?.healthMetrics?.overallScore ?? 0;
 
@@ -142,6 +155,38 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Project Search */}
             <ProjectSearch projects={projects} currentProject={currentProject} onSelectProject={onSelectProject} />
+
+            {/* ⌘K Command Palette pill */}
+            <button
+              id="navbar-command-palette-btn"
+              onClick={openPalette}
+              title="Open Command Palette (Ctrl+K)"
+              className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono font-semibold transition-all cursor-pointer flex-shrink-0"
+              style={{
+                background: 'var(--bg)',
+                borderColor: 'var(--border-2)',
+                color: 'var(--text-5)',
+              }}
+            >
+              <Search className="w-3 h-3" />
+              <span>Search</span>
+              <kbd
+                className="px-1 rounded text-[9px] border"
+                style={{ background: 'var(--panel)', borderColor: 'var(--border-2)', color: 'var(--accent)' }}
+              >
+                ⌘K
+              </kbd>
+            </button>
+
+            {/* Notification Bell + Panel */}
+            <div className="relative flex-shrink-0">
+              <NotificationBell unreadCount={unreadCount} onClick={() => setNotifOpen((o) => !o)} />
+              <NotificationPanel
+                isOpen={notifOpen}
+                onClose={() => setNotifOpen(false)}
+                onNavigate={onNavigateTab}
+              />
+            </div>
 
             {/* Buy Credits */}
             {user && (

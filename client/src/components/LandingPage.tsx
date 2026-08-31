@@ -203,6 +203,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
   const [processingPack, setProcessingPack] = useState<string | null>(null);
   const [paymentMode, setPaymentMode]       = useState<'live' | 'simulation' | null>(null);
   const [mobileNavOpen, setMobileNavOpen]   = useState(false);
+  // ── Sticky scroll animation ───────────────────────────────────────────
+  const [scrolled, setScrolled] = useState(false);
+  const scrollRafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const THRESHOLD = 60; // px before sticky compact kicks in
+    const onScroll = () => {
+      cancelAnimationFrame(scrollRafRef.current);
+      scrollRafRef.current = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > THRESHOLD);
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []);
 
   // ── Cursor glow ──────────────────────────────────────────────────────
   const glowRef = useRef<HTMLDivElement>(null);
@@ -323,7 +341,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
   // ─────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={tokens} className="min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)] overflow-x-hidden">
+    <div style={tokens} className="min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)] overflow-x-clip">
 
       {/* ── Cursor glow orb ── */}
       <div
@@ -344,22 +362,98 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       {/* ---------------------------------------------------------------- */}
       {/* Nav                                                               */}
       {/* ---------------------------------------------------------------- */}
-      <div className="hi-nav px-3 sm:px-6 pt-4 sm:pt-5 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto">
+      <header
+        className="hi-nav fixed top-0 left-0 right-0 z-50 pointer-events-none"
+        style={{
+          padding: scrolled ? '8px 12px' : '18px 16px',
+          transition: 'padding 0.35s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        <div className="max-w-6xl mx-auto pointer-events-auto">
           {/* ── Nav bar row ── */}
           <nav
-            className="flex items-center justify-between rounded-2xl border border-[var(--lens-border)] bg-[var(--lens-panel)]/95 backdrop-blur-md px-4 py-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+            style={{
+              /* base appearance */
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              border: '1px solid var(--lens-border)',
+              background: scrolled
+                ? (isDark ? 'rgba(13,13,13,0.88)' : 'rgba(255,255,255,0.92)')
+                : (isDark ? 'rgba(19,19,19,0.95)' : 'rgba(255,255,255,0.95)'),
+              backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'blur(12px)',
+              WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'blur(12px)',
+              borderRadius: scrolled ? '14px' : '16px',
+              boxShadow: scrolled
+                ? (isDark
+                    ? '0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04), 0 0 24px -8px rgba(214,255,63,0.12)'
+                    : '0 8px 40px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06), 0 0 24px -8px rgba(138,170,0,0.10)')
+                : '0 0 0 1px rgba(255,255,255,0.02)',
+              /* compact height: reduce py when scrolled */
+              padding: scrolled ? '6px 16px' : '10px 16px',
+              /* smooth all cosmetic properties */
+              transition: [
+                'padding 0.35s cubic-bezier(0.4,0,0.2,1)',
+                'background 0.35s cubic-bezier(0.4,0,0.2,1)',
+                'backdrop-filter 0.35s cubic-bezier(0.4,0,0.2,1)',
+                'border-radius 0.35s cubic-bezier(0.4,0,0.2,1)',
+                'box-shadow 0.35s cubic-bezier(0.4,0,0.2,1)',
+              ].join(', '),
+              /* slide-in from above when first mounted scrolled */
+              willChange: 'transform, opacity',
+            }}
           >
             {/* Brand */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-[var(--lens-accent)]/15 border border-[var(--lens-accent)]/30 flex items-center justify-center">
-                <Radar className="w-4 h-4 text-[var(--lens-accent)]" />
+            <div
+              className="flex items-center gap-2 flex-shrink-0 cursor-pointer"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              style={{ transition: 'gap 0.3s ease' }}
+            >
+              <div
+                style={{
+                  width: scrolled ? '28px' : '32px',
+                  height: scrolled ? '28px' : '32px',
+                  borderRadius: '8px',
+                  background: 'rgba(214,255,63,0.12)',
+                  border: '1px solid rgba(214,255,63,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'width 0.35s ease, height 0.35s ease',
+                }}
+              >
+                <Radar
+                  style={{
+                    width: scrolled ? '14px' : '16px',
+                    height: scrolled ? '14px' : '16px',
+                    color: 'var(--lens-accent)',
+                    transition: 'width 0.35s ease, height 0.35s ease',
+                  }}
+                />
               </div>
-              <span className="font-extrabold tracking-tight text-[15px]">ProjectLens<span className="text-[var(--lens-accent)]"> AI</span></span>
+              <span
+                className="font-extrabold tracking-tight"
+                style={{
+                  fontSize: scrolled ? '13px' : '15px',
+                  transition: 'font-size 0.35s ease',
+                }}
+              >
+                ProjectLens<span style={{ color: 'var(--lens-accent)' }}> AI</span>
+              </span>
             </div>
 
             {/* Desktop centre links */}
-            <div className="hidden md:flex items-center gap-7 text-[13px] font-medium" style={{ color: 'var(--lens-text-dim)' }}>
+            <div
+              className="hidden md:flex items-center"
+              style={{
+                gap: scrolled ? '20px' : '28px',
+                fontSize: scrolled ? '12px' : '13px',
+                fontWeight: 500,
+                color: 'var(--lens-text-dim)',
+                transition: 'gap 0.35s ease, font-size 0.35s ease',
+              }}
+            >
               {NAV_LINKS.map((link) => (
                 <button
                   key={link.label}
@@ -373,28 +467,70 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             </div>
 
             {/* Desktop right actions */}
-            <div className="hidden md:flex items-center gap-3">
+            <div
+              className="hidden md:flex items-center"
+              style={{
+                gap: scrolled ? '8px' : '12px',
+                transition: 'gap 0.35s ease',
+              }}
+            >
               <button
                 id="landing-theme-toggle-btn"
                 onClick={toggleTheme}
                 title={isDark ? 'Light Mode' : 'Dark Mode'}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--lens-panel)] hover:bg-[var(--lens-panel-2)] border border-[var(--lens-border)] hover:border-[var(--lens-accent)]/40 transition-colors cursor-pointer flex-shrink-0"
-                style={{ color: 'var(--lens-text-dim)' }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: scrolled ? '30px' : '32px',
+                  height: scrolled ? '30px' : '32px',
+                  borderRadius: '8px',
+                  background: 'var(--lens-panel)',
+                  border: '1px solid var(--lens-border)',
+                  color: 'var(--lens-text-dim)',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  transition: 'width 0.35s ease, height 0.35s ease',
+                }}
               >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {isDark ? <Sun style={{ width: '15px', height: '15px' }} /> : <Moon style={{ width: '15px', height: '15px' }} />}
               </button>
               <button
                 id="landing-signin-btn"
                 onClick={onSignIn || onGetStarted}
-                className="text-[13px] font-semibold cursor-pointer transition-colors hover:text-[var(--lens-accent)]"
-                style={{ color: 'var(--lens-text-dim)' }}
+                style={{
+                  fontSize: scrolled ? '12px' : '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  color: 'var(--lens-text-dim)',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  transition: 'font-size 0.35s ease, color 0.2s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--lens-accent)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--lens-text-dim)')}
               >
                 Sign In
               </button>
               <button
                 id="landing-getstarted-btn"
                 onClick={onSignUp || onGetStarted}
-                className="px-4 py-2 rounded-xl bg-[var(--lens-accent)] text-black text-[13px] font-bold hover:brightness-110 transition-all shadow-[0_0_20px_-4px_var(--lens-accent)] cursor-pointer"
+                style={{
+                  padding: scrolled ? '5px 14px' : '8px 16px',
+                  borderRadius: '10px',
+                  background: 'var(--lens-accent)',
+                  color: '#000',
+                  fontSize: scrolled ? '12px' : '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: 'none',
+                  boxShadow: '0 0 20px -4px var(--lens-accent)',
+                  transition: 'padding 0.35s ease, font-size 0.35s ease, border-radius 0.35s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.filter = '')}
               >
                 Get Started
               </button>
@@ -465,7 +601,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             </div>
           )}
         </div>
-      </div>
+      </header>
 
       {/* ---------------------------------------------------------------- */}
       {/* Hero                                                              */}
@@ -475,7 +611,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         <div className="hi-glow pointer-events-none absolute -top-24 -right-24 w-80 h-80 bg-[var(--lens-accent)]/10 blur-[100px] rounded-full" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-10 relative">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 sm:pt-32 pb-10 relative">
           <div className="flex justify-center mb-7">
             <div className="hi-badge inline-flex items-center gap-2 rounded-full border border-[var(--lens-accent)]/30 bg-[var(--lens-accent)]/10 px-4 py-1.5 text-[12px] font-mono text-[var(--lens-accent)]">
               <span className="relative flex h-1.5 w-1.5">
