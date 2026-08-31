@@ -12,6 +12,21 @@ export type ContradictionSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ProjectHealthStatus = 'Healthy' | 'Medium Risk' | 'High Risk';
 export type DocumentType = 'SRS' | 'Proposal' | 'Sprint Report' | 'Meeting Notes' | 'Design Doc' | 'Timeline' | 'Feature List';
 
+// A lightweight snapshot of a single analysis run (stored in analysisHistory)
+export interface AnalysisStatusSnapshot {
+  reqId: string;
+  status: ImplementationStatus;
+  coveragePercent: number;
+}
+
+export interface AnalysisSnapshot {
+  runId: string;
+  timestamp: string;
+  overallScore: number;
+  healthRating: ProjectHealthStatus;
+  statusSnapshot: AnalysisStatusSnapshot[];
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -23,8 +38,18 @@ export interface Project {
   // the local deterministic summary and never calls an external AI
   // provider for this project.
   allowExternalAI?: boolean;
+  slackWebhookUrl?: string;      // optional — configured per project in Settings
   createdAt: string;
   updatedAt: string;
+}
+
+// API Key for programmatic REST API access
+export interface ApiKey {
+  _id: string;
+  keyPrefix: string;             // first 16 chars for display (e.g. pl_live_a1b2c3d4)
+  label: string;
+  lastUsedAt: string | null;
+  createdAt: string;
 }
 
 export interface DocumentSection {
@@ -257,4 +282,5 @@ export interface ProjectIntelligenceData {
   healthMetrics: ProjectHealthMetrics;
   chatMessages?: ChatMessage[];
   ragAuditLog?: RagAuditEntry[];
+  analysisHistory?: AnalysisSnapshot[];
 }

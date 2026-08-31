@@ -203,6 +203,26 @@ const ProjectHealthMetricsSchema = new Schema(
   { _id: false }
 );
 
+// Lightweight per-run snapshot stored in analysisHistory
+const AnalysisSnapshotSchema = new Schema(
+  {
+    runId: String,
+    timestamp: String,
+    overallScore: Number,
+    healthRating: String,
+    // [ { reqId, status, coveragePercent } ] — one entry per requirement
+    statusSnapshot: [
+      {
+        reqId: String,
+        status: String,
+        coveragePercent: Number,
+        _id: false,
+      },
+    ],
+  },
+  { _id: false }
+);
+
 const ChatMessageSchema = new Schema(
   {
     id: String,
@@ -248,6 +268,8 @@ const ProjectSchema = new Schema(
     // only uses the deterministic local summary. See copilotService.js.
     allowExternalAI: { type: Boolean, default: false },
     ragAuditLog: { type: [RagAuditEntrySchema], default: [] },
+    // Slack Incoming Webhook URL — optional, set per-project in Settings
+    slackWebhookUrl: { type: String, default: '' },
     createdAt: { type: String },
     updatedAt: { type: String },
 
@@ -255,6 +277,8 @@ const ProjectSchema = new Schema(
     requirements: { type: [SoftwareRequirementSchema], default: [] },
     implementationProfile: { type: ImplementationProfileSchema, default: null },
     analysisResults: { type: [RequirementAnalysisResultSchema], default: [] },
+    // Stores up to 20 lightweight snapshots — one per analysis run
+    analysisHistory: { type: [AnalysisSnapshotSchema], default: [] },
     healthMetrics: {
       type: ProjectHealthMetricsSchema,
       default: () => ({
@@ -289,6 +313,7 @@ ProjectSchema.methods.toIntelligenceData = function toIntelligenceData() {
       techStack,
       githubUrl,
       allowExternalAI: Boolean(allowExternalAI),
+      slackWebhookUrl: rest.slackWebhookUrl || '',
       createdAt,
       updatedAt,
     },
@@ -296,6 +321,7 @@ ProjectSchema.methods.toIntelligenceData = function toIntelligenceData() {
     requirements: rest.requirements || [],
     implementationProfile: rest.implementationProfile || null,
     analysisResults: rest.analysisResults || [],
+    analysisHistory: rest.analysisHistory || [],
     ragAuditLog: rest.ragAuditLog || [],
     healthMetrics: rest.healthMetrics,
     chatMessages: rest.chatMessages || [],

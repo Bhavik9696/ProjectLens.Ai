@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
+import { sendAnalysisNotification } from '../services/slackService.js';
 
 const router = Router();
 
@@ -116,7 +117,30 @@ router.put('/:id', requireAuth, async (req, res) => {
       if (project.techStack       !== undefined) update.techStack       = project.techStack;
       if (project.githubUrl       !== undefined) update.githubUrl       = project.githubUrl;
       if (project.allowExternalAI !== undefined) update.allowExternalAI = Boolean(project.allowExternalAI);
+      if (project.slackWebhookUrl !== undefined) update.slackWebhookUrl = project.slackWebhookUrl;
     }
+
+    // ── Auto-append analysis history snapshot ──────────────────────────────
+    // Only append when an analysis actually ran (both analysisResults and
+    // healthMetrics are present and the result list is non-empty).
+    if (analysisResults && analysisResults.length > 0 && healthMetrics) {
+      const snapshot = {
+        runId: `run-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        overallScore: healthMetrics.overallScore ?? 0,
+        healthRating: healthMetrics.healthRating ?? 'Healthy',
+        statusSnapshot: analysisResults.map((r) => ({
+          reqId: r.requirementId,
+          status: r.status,
+          coveragePercent: r.coveragePercent ?? 0,
+        })),
+      };
+      // Fetch existing history, prepend new snapshot, keep latest 20
+      const existing = await Project.findOne({ _id: req.params.id, userId: req.user._id }, { analysisHistory: 1 });
+      const prevHistory = existing?.analysisHistory || [];
+      update.analysisHistory = [snapshot, ...prevHistory].slice(0, 20);
+    }
+    // ──────────────────────────────────────────────────────────────────
 
     const doc = await Project.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },
@@ -126,6 +150,19 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (!doc) return res.status(404).json({ error: 'Project not found' });
 
     res.json(doc.toIntelligenceData());
+
+    // ── Fire Slack notification (async, non-blocking) ──────────────────
+    if (analysisResults && analysisResults.length > 0 && healthMetrics && doc.slackWebhookUrl) {
+      const prevHistory = (doc.analysisHistory || []);
+      const previousSnapshot = prevHistory.length > 1 ? prevHistory[1] : null; // [0] is the run we just added
+      sendAnalysisNotification(doc.slackWebhookUrl, {
+        projectName:      doc.name,
+        healthMetrics,
+        analysisResults,
+        previousSnapshot,
+      }).catch(() => {}); // already handled inside slackService
+    }
+    // ──────────────────────────────────────────────────────────────────
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to save project' });
   }

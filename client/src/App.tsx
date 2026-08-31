@@ -15,6 +15,10 @@ import { AICopilotChat } from './components/AICopilotChat';
 import { NewProjectModal } from './components/NewProjectModal';
 import { ReportGeneratorModal } from './components/ReportGeneratorModal';
 import { BuyCreditsModal } from './components/BuyCreditsModal';
+import { ScopeCreepPanel } from './components/ScopeCreepPanel';
+import { TestCoverageReport } from './components/TestCoverageReport';
+import { AnalysisHistory } from './components/AnalysisHistory';
+import { ProjectSettingsModal } from './components/ProjectSettingsModal';
 import {
   fetchProjectsApi,
   createProjectApi,
@@ -30,7 +34,7 @@ import { Loader2 } from 'lucide-react';
 type AppView = 'landing' | 'signin' | 'signup' | 'forgot-password' | 'reset-password' | 'app';
 
 export default function App() {
-  const { user, isLoading: authLoading, signOut, refreshCredits } = useAuth();
+  const { user, isLoading: authLoading, signOut, refreshCredits, loginWithToken } = useAuth();
   const [view, setView] = useState<AppView>('landing');
   const [resetToken, setResetToken] = useState<string>('');
   const [projectsData, setProjectsData] = useState<ProjectIntelligenceData[]>([]);
@@ -39,19 +43,36 @@ export default function App() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isBuyCreditsModalOpen, setIsBuyCreditsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  // On mount: check for ?token= in URL — navigate to reset-password view
+  // On mount: check for URL params —
+  //   ?token=      → password reset flow
+  //   ?oauthToken= → Google OAuth sign-in redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // Password reset token
     const token = params.get('token');
     if (token) {
       setResetToken(token);
       setView('reset-password');
-      // Remove the token from the URL bar without a page reload
       window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    // Google OAuth token — store & resolve user, then go to app
+    const oauthToken = params.get('oauthToken');
+    if (oauthToken) {
+      window.history.replaceState({}, '', window.location.pathname);
+      loginWithToken(oauthToken)
+        .then(() => setView('app'))
+        .catch((err) => {
+          console.error('[OAuth] Failed to validate token:', err);
+          setView('signin');
+        });
     }
   }, []);
 
@@ -63,8 +84,19 @@ export default function App() {
     }
   }, [authLoading, user]);
 
-  // Load persisted projects from MongoDB (via the Express API) on first mount.
+  // Load persisted projects from MongoDB (via the Express API) once auth has resolved.
+  // We skip the fetch entirely when no user is logged in to avoid a spurious
+  // "Could not reach the API" error toast on the landing / sign-in screens.
   useEffect(() => {
+    // Still waiting for the session to be restored — do nothing yet.
+    if (authLoading) return;
+
+    // No authenticated user — nothing to fetch; just stop the loading spinner.
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -86,7 +118,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, user]);
 
   // BUG FIX: the original app assumed there was always at least one
   // project (from static sample data) and let several tabs dereference
@@ -421,6 +453,7 @@ export default function App() {
         onOpenNewProject={() => setIsNewProjectModalOpen(true)}
         onOpenReportModal={() => setIsReportModalOpen(true)}
         onDeleteProject={handleDeleteProject}
+        onOpenSettings={currentProjectData ? () => setIsSettingsModalOpen(true) : undefined}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onSignOut={handleSignOut}
@@ -487,6 +520,27 @@ export default function App() {
         {activeTab === 'copilot' && !currentProjectData && (
           <EmptyProjectPrompt onCreate={() => setIsNewProjectModalOpen(true)} />
         )}
+
+        {/* Feature 1: Scope Creep Panel */}
+        {activeTab === 'scope' && currentProjectData && (
+          <ScopeCreepPanel healthMetrics={currentProjectData.healthMetrics} />
+        )}
+        {activeTab === 'scope' && !currentProjectData && (
+          <EmptyProjectPrompt onCreate={() => setIsNewProjectModalOpen(true)} />
+        )}
+
+        {/* Feature 2: Test Coverage Gap Report */}
+        {activeTab === 'tests' && (
+          <TestCoverageReport analysisResults={currentProjectData?.analysisResults || []} />
+        )}
+
+        {/* Feature 3: Analysis History & Diff */}
+        {activeTab === 'history' && (
+          <AnalysisHistory
+            analysisHistory={currentProjectData?.analysisHistory || []}
+            currentResults={currentProjectData?.analysisResults || []}
+          />
+        )}
       </main>
 
       {/* Step 1: New Project Modal */}
@@ -511,6 +565,19 @@ export default function App() {
           await refreshCredits();
         }}
       />
+
+      {/* Project Settings Modal (Slack + API Keys) */}
+      {currentProjectData && isSettingsModalOpen && (
+        <ProjectSettingsModal
+          project={currentProjectData}
+          onClose={() => setIsSettingsModalOpen(false)}
+          onSaved={(updated) => {
+            setProjectsData((prev) =>
+              prev.map((p) => p.project.id === updated.project.id ? updated : p)
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

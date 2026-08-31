@@ -1,11 +1,26 @@
 import crypto from 'crypto';
 import { Router } from 'express';
+import { google } from 'googleapis';
 import User from '../models/User.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { sendPasswordResetEmail } from '../services/email.js';
 
 const router = Router();
+
+// ── Google OAuth2 client (lazy-initialised) ─────────────────────────────────
+function getGoogleClient() {
+  const clientId     = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const serverUrl    = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 5000}`;
+  const redirectUri  = `${serverUrl}/api/auth/google/callback`;
+
+  if (!clientId || !clientSecret) {
+    return null; // Google OAuth not configured — silently disabled
+  }
+
+  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+}
 
 /** Helper: build the safe public user object returned in every auth response */
 function publicUser(user) {
@@ -15,8 +30,92 @@ function publicUser(user) {
     email:                 user.email,
     freeProjectsRemaining: user.freeProjectsRemaining ?? 2,
     paidCredits:           user.paidCredits           ?? 0,
+    authProvider:          user.authProvider           || 'local',
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* GET /api/auth/google  — redirect to Google consent screen          */
+/* ------------------------------------------------------------------ */
+router.get('/google', (req, res) => {
+  const oauth2Client = getGoogleClient();
+  if (!oauth2Client) {
+    return res.status(503).json({ error: 'Google OAuth is not configured on this server. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to server/.env' });
+  }
+
+  const scopes = ['openid', 'email', 'profile'];
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: scopes,
+    prompt: 'select_account',
+  });
+
+  res.redirect(url);
+});
+
+/* ------------------------------------------------------------------ */
+/* GET /api/auth/google/callback — exchange code, upsert user, JWT   */
+/* ------------------------------------------------------------------ */
+router.get('/google/callback', async (req, res) => {
+  const oauth2Client = getGoogleClient();
+  if (!oauth2Client) {
+    return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}?oauthError=not_configured`);
+  }
+
+  const { code, error: oauthError } = req.query;
+
+  if (oauthError || !code) {
+    return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}?oauthError=access_denied`);
+  }
+
+  try {
+    // Exchange authorization code for tokens
+    const { tokens } = await oauth2Client.getToken(String(code));
+    oauth2Client.setCredentials(tokens);
+
+    // Fetch the user's Google profile
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const { data: profile } = await oauth2.userinfo.get();
+
+    if (!profile.email || !profile.id) {
+      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}?oauthError=no_email`);
+    }
+
+    // Upsert: find by googleId first, then by email (handles existing local accounts)
+    let user = await User.findOne({ googleId: profile.id });
+
+    if (!user) {
+      // Check if email already exists as a local account
+      user = await User.findOne({ email: profile.email.toLowerCase() });
+      if (user) {
+        // Link Google to existing local account
+        user.googleId    = profile.id;
+        user.authProvider = 'google';
+        await user.save();
+      } else {
+        // Brand new user via Google
+        user = await User.create({
+          name:         profile.name || profile.email.split('@')[0],
+          email:        profile.email.toLowerCase(),
+          googleId:     profile.id,
+          authProvider: 'google',
+          // No password — OAuth users authenticate via Google
+        });
+      }
+    }
+
+    const jwtToken = signToken(user._id);
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
+    // Redirect to client with token in URL — client will store it and remove from URL
+    res.redirect(`${clientUrl}?oauthToken=${jwtToken}`);
+    console.log(`[Auth] Google OAuth sign-in: ${user.email}`);
+  } catch (err) {
+    console.error('[Auth] Google OAuth callback error:', err.message);
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    res.redirect(`${clientUrl}?oauthError=server_error`);
+  }
+});
 
 /* ------------------------------------------------------------------ */
 /* POST /api/auth/signup                                               */

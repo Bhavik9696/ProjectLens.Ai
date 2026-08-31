@@ -16,6 +16,8 @@ interface AuthContextValue {
   deductCredit: (type: 'free' | 'paid') => void;
   /** Optimistically add paid credits after a successful payment */
   addPaidCredits: (count: number) => void;
+  /** Consume a raw JWT string (e.g. from a Google OAuth redirect) and sign in */
+  loginWithToken: (token: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -97,8 +99,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
+  /** Accept a raw JWT from a URL param (e.g. Google OAuth callback) */
+  const loginWithToken = useCallback(async (t: string) => {
+    const { user: u } = await getMeApi(t);
+    persist(t, u);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, signIn, signUp, signOut, refreshCredits, deductCredit, addPaidCredits }}>
+    <AuthContext.Provider value={{ user, token, isLoading, signIn, signUp, signOut, refreshCredits, deductCredit, addPaidCredits, loginWithToken }}>
       {children}
     </AuthContext.Provider>
   );

@@ -23,6 +23,10 @@ import {
   Gift,
   Menu,
   X,
+  Layers2,
+  FlaskConical,
+  History,
+  Settings2,
 } from 'lucide-react';
 import { AuthUser } from '../services/authApi';
 
@@ -33,6 +37,7 @@ interface NavbarProps {
   onOpenNewProject: () => void;
   onOpenReportModal: () => void;
   onDeleteProject?: (id: string) => void;
+  onOpenSettings?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onSignOut?: () => void;
@@ -47,6 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewProject,
   onOpenReportModal,
   onDeleteProject,
+  onOpenSettings,
   activeTab,
   setActiveTab,
   onSignOut,
@@ -101,6 +107,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'documents', label: 'Documents',   shortLabel: 'Docs',     icon: FileText  },
     { id: 'github',    label: 'GitHub',      shortLabel: 'GitHub',   icon: GitBranch },
     { id: 'copilot',   label: 'AI Copilot',  shortLabel: 'Copilot',  icon: Bot       },
+    { id: 'scope',     label: 'Scope Creep', shortLabel: 'Scope',    icon: Layers2   },
+    { id: 'tests',     label: 'Test Gaps',   shortLabel: 'Tests',    icon: FlaskConical },
+    { id: 'history',   label: 'History',     shortLabel: 'History',  icon: History   },
   ];
 
   return (
@@ -203,6 +212,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Download className="w-3.5 h-3.5 text-[var(--accent)]" />
               Export
             </button>
+
+            {/* Project Settings */}
+            {currentProject && onOpenSettings && (
+              <button
+                onClick={onOpenSettings}
+                title="Project Settings (Slack & API Keys)"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--panel)] hover:bg-[var(--surface-3)] text-[var(--text-4)] hover:text-[var(--accent)] border border-[var(--border-2)] cursor-pointer transition-colors"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             {/* Avatar + Sign Out */}
             {user && (

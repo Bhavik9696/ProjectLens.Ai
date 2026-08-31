@@ -17,10 +17,24 @@ const userSchema = new mongoose.Schema(
       trim:      true,
       match:     [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
     },
+    // password is optional for OAuth users
     password: {
       type:      String,
-      required:  [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
+    },
+
+    // ── OAuth ───────────────────────────────────────────────────────────
+    // 'local' = email + password, 'google' = Google OAuth
+    authProvider: {
+      type:    String,
+      enum:    ['local', 'google'],
+      default: 'local',
+    },
+    // Google OAuth subject ID — sparse so null values don't conflict on unique index
+    googleId: {
+      type:   String,
+      sparse: true,
+      unique: true,
     },
 
     // ── Credit / Freemium System ────────────────────────────────────────
@@ -41,9 +55,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving
+// Hash password before saving (only for local auth users)
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
   next();
@@ -51,6 +65,7 @@ userSchema.pre('save', async function (next) {
 
 // Compare a plain-text password against the stored hash
 userSchema.methods.comparePassword = async function (candidate) {
+  if (!this.password) return false; // OAuth users have no password
   return bcrypt.compare(candidate, this.password);
 };
 

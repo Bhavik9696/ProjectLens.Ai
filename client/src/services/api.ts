@@ -1,4 +1,5 @@
 import {
+  ApiKey,
   ImplementationProfile,
   Project,
   ProjectHealthMetrics,
@@ -227,4 +228,28 @@ export async function verifyPaymentApi(params: {
     method: 'POST',
     body: JSON.stringify(params),
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* API Key Management                                                  */
+/* ------------------------------------------------------------------ */
+
+export async function fetchApiKeysApi(): Promise<{ keys: ApiKey[] }> {
+  return apiFetch('/api/keys');
+}
+
+export async function createApiKeyApi(label: string): Promise<{ key: string; prefix: string; label: string; message: string }> {
+  return apiFetch('/api/keys', { method: 'POST', body: JSON.stringify({ label }) });
+}
+
+export async function revokeApiKeyApi(id: string): Promise<void> {
+  await apiFetch(`/api/keys/${id}`, { method: 'DELETE' });
+}
+
+/* ------------------------------------------------------------------ */
+/* Slack Integration                                                   */
+/* ------------------------------------------------------------------ */
+
+export async function testSlackWebhookApi(webhookUrl: string): Promise<{ success: boolean; message: string }> {
+  return apiFetch('/api/slack/test', { method: 'POST', body: JSON.stringify({ webhookUrl }) });
 }

@@ -1,6 +1,7 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import mongoose from 'mongoose';
 
 import { connectDB } from './config/db.js';
 import { seedIfEmpty } from './config/seed.js';
@@ -11,6 +12,10 @@ import engineRoutes from './routes/engine.js';
 import githubRoutes from './routes/github.js';
 import projectsRoutes from './routes/projects.js';
 import paymentsRoutes from './routes/payments.js';
+import apiKeysRoutes from './routes/apiKeys.js';
+import v1Routes from './routes/v1.js';
+import { sendTestNotification } from './services/slackService.js';
+import { requireAuth } from './middleware/auth.js';
 
 dotenv.config();
 
@@ -33,6 +38,8 @@ const allowedOrigins = [
   ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL.trim()] : []),
   'http://localhost:5174',  // Vite fallback port when 5173 is taken
   'http://localhost:5175',  // extra fallback
+  'http://10.235.253.85:5173', // LAN IP fallback (Vite network mode)
+  'http://10.235.253.85:5174',
 ];
 
 app.use(cors({
@@ -75,6 +82,33 @@ app.use('/api/copilot', copilotRoutes);
 
 // Payments & credits (Razorpay Test Mode)
 app.use('/api/payments', paymentsRoutes);
+
+// API Key management
+app.use('/api/keys', apiKeysRoutes);
+
+// Public REST API v1 (JWT or API key auth)
+app.use('/api/v1', v1Routes);
+
+// Test Slack webhook (used by Project Settings UI)
+app.post('/api/slack/test', requireAuth, async (req, res) => {
+  const { webhookUrl } = req.body;
+  if (!webhookUrl) return res.status(400).json({ error: 'webhookUrl is required' });
+  try {
+    await sendTestNotification(webhookUrl);
+    res.json({ success: true, message: 'Test notification sent to Slack!' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// MongoDB health check
+app.get('/api/health/db', (_req, res) => {
+  const stateMap = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  res.json({
+    status: stateMap[mongoose.connection.readyState] || 'unknown',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // 404 fallback for unknown API routes
 app.use('/api', (_req, res) => {
