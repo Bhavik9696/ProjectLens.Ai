@@ -23,29 +23,35 @@ const HEALTH_EMOJI = {
  * @param {object} data.healthMetrics
  * @param {Array}  data.analysisResults
  * @param {object|null} data.previousSnapshot  - previous run snapshot (for delta)
+ * @param {boolean} [data.isScheduled=false]   - true when triggered by the auto-scheduler
  */
-export async function sendAnalysisNotification(webhookUrl, { projectName, healthMetrics, analysisResults, previousSnapshot }) {
+export async function sendAnalysisNotification(webhookUrl, { projectName, healthMetrics, analysisResults, previousSnapshot, isScheduled = false }) {
   if (!webhookUrl || !webhookUrl.startsWith('https://hooks.slack.com/')) return;
 
   try {
     const { overallScore, healthRating, requirementCoverage, scopeCreep } = healthMetrics;
     const emoji = HEALTH_EMOJI[healthRating] || '📊';
+    const triggerLabel = isScheduled ? '🕐 Scheduled Auto-Analysis' : '✋ Manual Analysis';
+
+    // Delta vs previous run
+    let deltaText = '';
+    let isRegression = false;
+    if (previousSnapshot) {
+      const delta = overallScore - previousSnapshot.overallScore;
+      if (delta > 0) {
+        deltaText = ` *(+${delta.toFixed(1)}% vs last run ↑)*`;
+      } else if (delta < 0) {
+        deltaText = ` *(${delta.toFixed(1)}% vs last run ↓)*`;
+        isRegression = true;
+      } else {
+        deltaText = ' *(no change vs last run)*';
+      }
+    }
 
     const implemented  = analysisResults.filter((r) => r.status === 'Implemented' || r.status === 'Completed').length;
     const partial      = analysisResults.filter((r) => r.status === 'Partially Implemented' || r.status === 'Partial').length;
     const missing      = analysisResults.filter((r) => r.status === 'Missing').length;
     const total        = analysisResults.length;
-
-    // Delta vs previous run
-    let deltaText = '';
-    if (previousSnapshot) {
-      const delta = overallScore - previousSnapshot.overallScore;
-      deltaText = delta > 0
-        ? ` *(+${delta}% since last run)*`
-        : delta < 0
-        ? ` *(${delta}% since last run)*`
-        : ' *(no change since last run)*';
-    }
 
     // Scope creep warning
     const highCreep = (scopeCreep || []).filter((s) => s.severity === 'HIGH').length;
@@ -60,14 +66,25 @@ export async function sendAnalysisNotification(webhookUrl, { projectName, health
       .map((r) => `• \`${r.requirementId}\` ${r.requirementTitle}`)
       .join('\n');
 
+    // Regression block — shown only on scheduled runs that detect a drop
+    const regressionBlock = isScheduled && isRegression ? [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `🚨 *REGRESSION DETECTED*\nCoverage dropped by *${Math.abs(overallScore - (previousSnapshot?.overallScore ?? overallScore)).toFixed(1)}%* since the last run. Immediate attention recommended.`,
+        },
+      },
+    ] : [];
+
     const payload = {
-      text: `${emoji} ProjectLens AI — Analysis Complete: *${projectName}*`,
+      text: `${emoji} ProjectLens AI — ${triggerLabel}: *${projectName}*`,
       blocks: [
         {
           type: 'header',
           text: {
             type: 'plain_text',
-            text: `${emoji} Analysis Complete: ${projectName}`,
+            text: `${emoji} ${triggerLabel}: ${projectName}`,
             emoji: true,
           },
         },
@@ -92,6 +109,7 @@ export async function sendAnalysisNotification(webhookUrl, { projectName, health
             },
           ],
         },
+        ...regressionBlock,
         ...(criticalMissing || creepLine
           ? [
               {
@@ -113,7 +131,7 @@ export async function sendAnalysisNotification(webhookUrl, { projectName, health
           elements: [
             {
               type: 'mrkdwn',
-              text: `Analyzed ${total} requirements · Sent by ProjectLens AI at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`,
+              text: `${isScheduled ? '🤖 Auto-scheduled' : '👤 Manual'} · Analyzed ${total} requirements · ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`,
             },
           ],
         },
@@ -131,7 +149,7 @@ export async function sendAnalysisNotification(webhookUrl, { projectName, health
       const text = await res.text();
       console.warn(`[Slack] Webhook returned ${res.status}: ${text}`);
     } else {
-      console.log(`[Slack] Notification sent to channel for project "${projectName}"`);
+      console.log(`[Slack] ${isScheduled ? 'Scheduled' : 'Manual'} notification sent for project "${projectName}"`);
     }
   } catch (err) {
     // Never block the main request

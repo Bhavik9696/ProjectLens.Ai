@@ -27,6 +27,15 @@ export interface AnalysisSnapshot {
   statusSnapshot: AnalysisStatusSnapshot[];
 }
 
+export interface AutoScheduleConfig {
+  enabled:    boolean;
+  frequency:  'daily' | 'weekly';
+  lastRunAt:  string | null;
+  nextRunAt:  string | null;
+  lastStatus: 'ok' | 'error' | null;
+  lastError:  string | null;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -39,6 +48,7 @@ export interface Project {
   // provider for this project.
   allowExternalAI?: boolean;
   slackWebhookUrl?: string;      // optional — configured per project in Settings
+  autoSchedule?: AutoScheduleConfig; // optional — auto-analysis schedule
   createdAt: string;
   updatedAt: string;
 }

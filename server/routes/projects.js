@@ -118,6 +118,21 @@ router.put('/:id', requireAuth, async (req, res) => {
       if (project.githubUrl       !== undefined) update.githubUrl       = project.githubUrl;
       if (project.allowExternalAI !== undefined) update.allowExternalAI = Boolean(project.allowExternalAI);
       if (project.slackWebhookUrl !== undefined) update.slackWebhookUrl = project.slackWebhookUrl;
+      // Auto-schedule config — merge individual fields so partial updates work
+      if (project.autoSchedule !== undefined) {
+        const sched = project.autoSchedule;
+        if (sched.enabled   !== undefined) update['autoSchedule.enabled']   = Boolean(sched.enabled);
+        if (sched.frequency !== undefined) update['autoSchedule.frequency'] = sched.frequency;
+        // Compute nextRunAt when enabling or changing frequency
+        if (sched.enabled) {
+          const freq = sched.frequency || 'daily';
+          const next = new Date();
+          if (freq === 'weekly') next.setUTCDate(next.getUTCDate() + 7);
+          else next.setUTCDate(next.getUTCDate() + 1);
+          next.setUTCHours(0, 0, 0, 0);
+          update['autoSchedule.nextRunAt'] = next.toISOString();
+        }
+      }
     }
 
     // ── Auto-append analysis history snapshot ──────────────────────────────

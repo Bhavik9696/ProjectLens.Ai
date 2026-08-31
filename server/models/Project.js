@@ -250,6 +250,18 @@ const RagAuditEntrySchema = new Schema(
   { _id: false }
 );
 
+const AutoScheduleSchema = new Schema(
+  {
+    enabled:    { type: Boolean, default: false },
+    frequency:  { type: String,  default: 'daily', enum: ['daily', 'weekly'] },
+    lastRunAt:  { type: String,  default: null },
+    nextRunAt:  { type: String,  default: null },
+    lastStatus: { type: String,  default: null },   // 'ok' | 'error'
+    lastError:  { type: String,  default: null },
+  },
+  { _id: false }
+);
+
 const ProjectSchema = new Schema(
   {
     // Use the same human-readable id format the original app generated
@@ -270,6 +282,8 @@ const ProjectSchema = new Schema(
     ragAuditLog: { type: [RagAuditEntrySchema], default: [] },
     // Slack Incoming Webhook URL — optional, set per-project in Settings
     slackWebhookUrl: { type: String, default: '' },
+    // Auto-schedule configuration
+    autoSchedule: { type: AutoScheduleSchema, default: () => ({}) },
     createdAt: { type: String },
     updatedAt: { type: String },
 
@@ -314,6 +328,7 @@ ProjectSchema.methods.toIntelligenceData = function toIntelligenceData() {
       githubUrl,
       allowExternalAI: Boolean(allowExternalAI),
       slackWebhookUrl: rest.slackWebhookUrl || '',
+      autoSchedule: rest.autoSchedule || { enabled: false, frequency: 'daily', lastRunAt: null, nextRunAt: null, lastStatus: null, lastError: null },
       createdAt,
       updatedAt,
     },

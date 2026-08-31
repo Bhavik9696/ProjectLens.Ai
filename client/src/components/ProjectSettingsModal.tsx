@@ -3,6 +3,7 @@ import {
   X,
   Bell,
   Key,
+  Calendar,
   ExternalLink,
   Check,
   Copy,
@@ -17,6 +18,10 @@ import {
   Terminal,
   Zap,
   Shield,
+  Clock,
+  RefreshCw,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import { ApiKey, ProjectIntelligenceData } from '../types';
 import {
@@ -33,7 +38,7 @@ interface ProjectSettingsModalProps {
   onSaved: (updated: ProjectIntelligenceData) => void;
 }
 
-type Tab = 'slack' | 'apikeys';
+type Tab = 'slack' | 'schedule' | 'apikeys';
 
 export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, onClose, onSaved }) => {
   const [activeTab, setActiveTab] = useState<Tab>('slack');
@@ -44,6 +49,13 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
   const [slackTesting, setSlackTesting]   = useState(false);
   const [slackMsg, setSlackMsg]           = useState<{ ok: boolean; text: string } | null>(null);
   const [showWebhook, setShowWebhook]     = useState(false);
+
+  // ── Schedule state ──────────────────────────────────────────
+  const existing = project.project.autoSchedule;
+  const [schedEnabled,   setSchedEnabled]   = useState(existing?.enabled   ?? false);
+  const [schedFrequency, setSchedFrequency] = useState<'daily' | 'weekly'>(existing?.frequency ?? 'daily');
+  const [schedSaving,    setSchedSaving]    = useState(false);
+  const [schedMsg,       setSchedMsg]       = useState<{ ok: boolean; text: string } | null>(null);
 
   // ── API Keys state ────────────────────────────────────────────────────
   const [apiKeys, setApiKeys]             = useState<ApiKey[]>([]);
@@ -84,6 +96,27 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
       setSlackMsg({ ok: false, text: err.message || 'Failed to save webhook.' });
     } finally {
       setSlackSaving(false);
+    }
+  };
+
+  // ── Schedule save ────────────────────────────────────────────
+  const handleScheduleSave = async () => {
+    setSchedSaving(true);
+    setSchedMsg(null);
+    try {
+      const updated = await saveProjectApi(project.project.id, {
+        project: {
+          autoSchedule: { enabled: schedEnabled, frequency: schedFrequency },
+        },
+      });
+      onSaved(updated);
+      setSchedMsg({ ok: true, text: schedEnabled
+        ? `Auto-analysis enabled. Next run: ${schedFrequency}.`
+        : 'Auto-analysis disabled.' });
+    } catch (err: any) {
+      setSchedMsg({ ok: false, text: err.message || 'Failed to save schedule.' });
+    } finally {
+      setSchedSaving(false);
     }
   };
 
@@ -168,8 +201,9 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
         {/* Tabs */}
         <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
           {([
-            { id: 'slack',   label: 'Slack Notifications', icon: Bell },
-            { id: 'apikeys', label: 'API Keys',            icon: Key  },
+            { id: 'slack',    label: 'Slack Alerts',  icon: Bell     },
+            { id: 'schedule', label: 'Auto-Schedule', icon: Calendar },
+            { id: 'apikeys',  label: 'API Keys',       icon: Key      },
           ] as { id: Tab; label: string; icon: any }[]).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -270,6 +304,152 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
               </div>
             </div>
           )}
+
+          {/* ── SCHEDULE TAB ── */}
+          {activeTab === 'schedule' && (() => {
+            const hasSlack   = !!project.project.slackWebhookUrl;
+            const hasGitHub  = !!project.implementationProfile;
+            const hasReqs    = (project.requirements?.length ?? 0) > 0;
+            const existing   = project.project.autoSchedule;
+            const lastRunAt  = existing?.lastRunAt  ?? null;
+            const nextRunAt  = existing?.nextRunAt  ?? null;
+            const lastStatus = existing?.lastStatus ?? null;
+            const lastError  = existing?.lastError  ?? null;
+
+            const fmt = (iso: string | null) =>
+              iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST' : '—';
+
+            return (
+              <div className="p-6 space-y-5">
+                {/* Info banner */}
+                <div className="ai-copilot-panel p-4 space-y-2">
+                  <p className="text-xs font-bold text-[var(--accent)] uppercase font-mono tracking-wider flex items-center gap-1">
+                    <RefreshCw className="w-3.5 h-3.5" /> How Auto-Analysis Works
+                  </p>
+                  <p className="text-xs text-[var(--text-3)] leading-relaxed">
+                    ProjectLens runs a full coverage analysis automatically in the background on your chosen schedule.
+                    Results are saved to your project history and a rich Slack alert is posted (if a webhook is configured).
+                  </p>
+                  <p className="text-xs text-[var(--text-4)]">
+                    ⚡ Runs daily at midnight UTC by default. Change the server's <code className="text-[var(--accent)]">SCHEDULE_CRON</code> env var for a custom interval.
+                  </p>
+                </div>
+
+                {/* Requirements warning */}
+                {(!hasGitHub || !hasReqs) && (
+                  <div className="flex items-start gap-2 rounded-xl px-4 py-3 text-xs border bg-amber-950/20 border-amber-500/25 text-amber-300">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Heads up:</strong> Auto-analysis requires both a connected GitHub repository and at least one SRS document uploaded.
+                      {!hasGitHub && ' GitHub is not connected.'}
+                      {!hasReqs  && ' No requirements found.'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Slack warning */}
+                {!hasSlack && (
+                  <div className="flex items-start gap-2 rounded-xl px-4 py-3 text-xs border bg-[var(--surface-3)] border-[var(--border-2)] text-[var(--text-4)]">
+                    <Bell className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    No Slack webhook configured — analysis will still run and save, but no Slack alert will be sent.
+                    <button onClick={() => setActiveTab('slack')} className="text-[var(--accent)] underline ml-1 cursor-pointer">Add one →</button>
+                  </div>
+                )}
+
+                {/* Enable toggle */}
+                <div className="flex items-center justify-between p-4 rounded-xl border"
+                  style={{ background: 'var(--bg)', borderColor: 'var(--border-2)' }}>
+                  <div>
+                    <p className="text-sm font-bold text-[var(--text-1)]">Enable Auto-Analysis</p>
+                    <p className="text-xs text-[var(--text-4)] mt-0.5">
+                      {schedEnabled ? 'Running automatically on schedule' : 'Currently disabled'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSchedEnabled((v) => !v)}
+                    className="cursor-pointer transition-colors flex-shrink-0"
+                    style={{ color: schedEnabled ? 'var(--accent)' : 'var(--text-5)' }}
+                    title={schedEnabled ? 'Disable' : 'Enable'}
+                  >
+                    {schedEnabled
+                      ? <ToggleRight className="w-8 h-8" />
+                      : <ToggleLeft  className="w-8 h-8" />}
+                  </button>
+                </div>
+
+                {/* Frequency selector */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-[var(--text-3)]">Frequency</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['daily', 'weekly'] as const).map((freq) => (
+                      <button
+                        key={freq}
+                        onClick={() => setSchedFrequency(freq)}
+                        className="flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold cursor-pointer transition-all"
+                        style={{
+                          background: schedFrequency === freq ? 'var(--accent)' : 'var(--bg)',
+                          color: schedFrequency === freq ? '#000' : 'var(--text-3)',
+                          borderColor: schedFrequency === freq ? 'var(--accent)' : 'var(--border-2)',
+                        }}
+                      >
+                        <Clock className="w-4 h-4" />
+                        {freq === 'daily' ? 'Daily (midnight UTC)' : 'Weekly (Mon midnight)'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Run status */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl border" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
+                    <p className="text-[10px] font-mono font-bold uppercase text-[var(--text-5)] mb-1">Last Run</p>
+                    <p className="text-xs font-semibold text-[var(--text-2)]">{fmt(lastRunAt)}</p>
+                    {lastStatus && (
+                      <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-bold ${
+                        lastStatus === 'ok' ? 'text-emerald-400' : 'text-rose-400'
+                      }`}>
+                        {lastStatus === 'ok'
+                          ? <CheckCircle2 className="w-3 h-3" />
+                          : <XCircle      className="w-3 h-3" />}
+                        {lastStatus === 'ok' ? 'Success' : 'Failed'}
+                      </span>
+                    )}
+                    {lastError && (
+                      <p className="text-[10px] text-rose-400/70 mt-1 line-clamp-2">{lastError}</p>
+                    )}
+                  </div>
+                  <div className="p-3 rounded-xl border" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
+                    <p className="text-[10px] font-mono font-bold uppercase text-[var(--text-5)] mb-1">Next Run</p>
+                    <p className="text-xs font-semibold text-[var(--text-2)]">{fmt(nextRunAt)}</p>
+                    {!schedEnabled && <p className="text-[10px] text-[var(--text-5)] mt-1">Enable to schedule</p>}
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                {schedMsg && (
+                  <div className={`flex items-start gap-2 rounded-xl px-4 py-3 text-xs border ${
+                    schedMsg.ok
+                      ? 'bg-emerald-950/20 border-emerald-500/25 text-emerald-300'
+                      : 'bg-rose-950/20 border-rose-500/25 text-rose-300'
+                  }`}>
+                    {schedMsg.ok ? <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
+                    {schedMsg.text}
+                  </div>
+                )}
+
+                {/* Save */}
+                <button
+                  onClick={handleScheduleSave}
+                  disabled={schedSaving}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50 transition-all"
+                  style={{ background: 'var(--accent)', color: '#000', boxShadow: '0 0 20px -6px var(--accent)' }}
+                >
+                  {schedSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Save Schedule
+                </button>
+              </div>
+            );
+          })()}
 
           {/* ── API KEYS TAB ── */}
           {activeTab === 'apikeys' && (

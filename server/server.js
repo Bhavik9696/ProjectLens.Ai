@@ -15,6 +15,7 @@ import paymentsRoutes from './routes/payments.js';
 import apiKeysRoutes from './routes/apiKeys.js';
 import v1Routes from './routes/v1.js';
 import { sendTestNotification } from './services/slackService.js';
+import { startScheduler } from './services/schedulerService.js';
 import { requireAuth } from './middleware/auth.js';
 
 dotenv.config();
@@ -118,6 +119,9 @@ app.use('/api', (_req, res) => {
 async function start() {
   await connectDB();
   await seedIfEmpty();
+
+  // Start the background scheduler (auto-analysis + Slack alerts)
+  startScheduler();
 
   app.listen(PORT, () => {
     console.log(`[ProjectLens AI] API server running on http://localhost:${PORT}`);
