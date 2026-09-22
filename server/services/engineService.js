@@ -348,7 +348,17 @@ function isGenericLayoutFile(filePath) {
 }
 
 // ─── MAIN EVALUATION ENGINE ───────────────────────────────────────────────────
-export async function evaluateEngine(requirements, implementationProfile) {
+export async function evaluateEngine(requirements, implementationProfile, options = {}) {
+  // ── Privacy Mode: delegate entirely to Local Agent ───────────────────────────
+  if (options?.analysisMode === 'privacy') {
+    const { runLocalAnalysis } = await import('./aiProviderService.js');
+    return runLocalAnalysis(
+      requirements,
+      implementationProfile,
+      options?.privacyConfig?.ollamaModel
+    );
+  }
+
   const fileTree = implementationProfile.fileTree || [];
   const codeGraph = implementationProfile.codeGraph || buildCodeGraph(fileTree);
   const codeGraphSummary = codeGraph.summary || {};

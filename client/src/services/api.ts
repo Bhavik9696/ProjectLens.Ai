@@ -253,3 +253,41 @@ export async function revokeApiKeyApi(id: string): Promise<void> {
 export async function testSlackWebhookApi(webhookUrl: string): Promise<{ success: boolean; message: string }> {
   return apiFetch('/api/slack/test', { method: 'POST', body: JSON.stringify({ webhookUrl }) });
 }
+
+/* ------------------------------------------------------------------ */
+/* Privacy Mode — Local Agent proxy                                     */
+/* ------------------------------------------------------------------ */
+
+export interface PrivacyStatus {
+  agent:     boolean;
+  ollama:    boolean;
+  status:    'ready' | 'ollama_offline' | 'agent_offline' | 'agent_error' | 'error' | string;
+  ollamaUrl?: string;
+}
+
+export async function checkPrivacyStatusApi(): Promise<PrivacyStatus> {
+  try {
+    return await apiFetch('/api/privacy/status');
+  } catch {
+    return { agent: false, ollama: false, status: 'agent_offline' };
+  }
+}
+
+export async function fetchPrivacyModelsApi(): Promise<{ models: string[] }> {
+  try {
+    return await apiFetch('/api/privacy/models');
+  } catch {
+    return { models: [] };
+  }
+}
+
+export async function runPrivacyAnalysisApi(
+  requirements: any[],
+  implementationProfile: any,
+  ollamaModel?: string,
+): Promise<{ analysisResults: any[]; healthMetrics: any }> {
+  return apiFetch('/api/privacy/analyze', {
+    method: 'POST',
+    body: JSON.stringify({ requirements, implementationProfile, ollamaModel }),
+  });
+}

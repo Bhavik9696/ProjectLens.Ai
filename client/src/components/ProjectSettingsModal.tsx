@@ -22,8 +22,9 @@ import {
   RefreshCw,
   ToggleLeft,
   ToggleRight,
+  Cloud,
 } from 'lucide-react';
-import { ApiKey, ProjectIntelligenceData } from '../types';
+import { ApiKey, AnalysisMode, ProjectIntelligenceData } from '../types';
 import {
   fetchApiKeysApi,
   createApiKeyApi,
@@ -31,6 +32,7 @@ import {
   testSlackWebhookApi,
   saveProjectApi,
 } from '../services/api';
+import { PrivacyModeSetup } from './PrivacyModeSetup';
 
 interface ProjectSettingsModalProps {
   project: ProjectIntelligenceData;
@@ -38,7 +40,7 @@ interface ProjectSettingsModalProps {
   onSaved: (updated: ProjectIntelligenceData) => void;
 }
 
-type Tab = 'slack' | 'schedule' | 'apikeys';
+type Tab = 'slack' | 'schedule' | 'apikeys' | 'privacy';
 
 export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, onClose, onSaved }) => {
   const [activeTab, setActiveTab] = useState<Tab>('slack');
@@ -66,6 +68,14 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
   const [copied, setCopied]               = useState(false);
   const [revoking, setRevoking]           = useState<string | null>(null);
   const [apiMsg, setApiMsg]               = useState<{ ok: boolean; text: string } | null>(null);
+
+  // ── Privacy Mode state ────────────────────────────────────────────────
+  const [privacyMode, setPrivacyMode]       = useState<AnalysisMode>(project.project.analysisMode || 'cloud');
+  const [ollamaModel, setOllamaModel]       = useState(project.project.privacyConfig?.ollamaModel || 'llama3.1:8b');
+  const [privacySaving, setPrivacySaving]   = useState(false);
+  const [privacyMsg, setPrivacyMsg]         = useState<{ ok: boolean; text: string } | null>(null);
+  const [showModeWarning, setShowModeWarning] = useState(false);
+  const [pendingMode, setPendingMode]       = useState<AnalysisMode | null>(null);
 
   // ── Load API keys on mount ────────────────────────────────────────────
   const loadKeys = useCallback(async () => {
@@ -182,6 +192,47 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
     });
   };
 
+  // ── Privacy save ──────────────────────────────────────────────────────
+  const handlePrivacySave = async () => {
+    setPrivacySaving(true);
+    setPrivacyMsg(null);
+    try {
+      const updated = await saveProjectApi(project.project.id, {
+        project: {
+          analysisMode: privacyMode,
+          privacyConfig: {
+            ollamaModel,
+            localAgentUrl: 'http://localhost:3847',
+          },
+        },
+      });
+      onSaved(updated);
+      setPrivacyMsg({ ok: true, text: privacyMode === 'privacy'
+        ? `Privacy Mode enabled. Using ${ollamaModel}.`
+        : 'Switched back to Cloud AI (Gemini).' });
+    } catch (err: any) {
+      setPrivacyMsg({ ok: false, text: err.message || 'Failed to save privacy settings.' });
+    } finally {
+      setPrivacySaving(false);
+    }
+  };
+
+  // ── Mode switch with warning ──────────────────────────────────────────
+  const handleModeChange = (newMode: AnalysisMode) => {
+    if (newMode !== privacyMode) {
+      setPendingMode(newMode);
+      setShowModeWarning(true);
+    }
+  };
+
+  const confirmModeChange = () => {
+    if (pendingMode) {
+      setPrivacyMode(pendingMode);
+      setShowModeWarning(false);
+      setPendingMode(null);
+    }
+  };
+
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   return (
@@ -211,13 +262,16 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
             { id: 'slack',    label: 'Slack Alerts',  icon: Bell     },
             { id: 'schedule', label: 'Auto-Schedule', icon: Calendar },
             { id: 'apikeys',  label: 'API Keys',       icon: Key      },
+            { id: 'privacy',  label: 'Privacy Mode',   icon: Shield   },
           ] as { id: Tab; label: string; icon: any }[]).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
                 activeTab === id
-                  ? 'border-[var(--accent)] text-[var(--accent)]'
+                  ? id === 'privacy'
+                    ? 'border-violet-400 text-violet-300'
+                    : 'border-[var(--accent)] text-[var(--accent)]'
                   : 'border-transparent text-[var(--text-4)] hover:text-[var(--text-2)]'
               }`}
             >
@@ -616,8 +670,127 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
               </div>
             </div>
           )}
+
+          {/* ── PRIVACY TAB ── */}
+          {activeTab === 'privacy' && (
+            <div className="p-6 space-y-5">
+              {/* Mode warning dialog */}
+              {showModeWarning && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/8 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <p className="text-sm font-bold text-amber-300">Switch Analysis Mode?</p>
+                  </div>
+                  <p className="text-xs text-[var(--text-3)] leading-relaxed">
+                    {pendingMode === 'privacy'
+                      ? 'Switching to Privacy Mode will route all future analyses through your local Ollama instance. Cloud AI (Gemini) will be disabled for this project.'
+                      : 'Switching back to Cloud AI will send file metadata to Gemini for analysis. No source code is sent, but analysis will leave your machine.'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={confirmModeChange}
+                      className="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-colors cursor-pointer"
+                    >
+                      Confirm Switch
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowModeWarning(false); setPendingMode(null); }}
+                      className="px-4 py-1.5 rounded-lg text-xs font-medium text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--surface-3)] transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mode toggle */}
+              <div>
+                <p className="text-xs font-mono font-bold text-[var(--text-4)] uppercase tracking-widest mb-3">Analysis Mode</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('cloud')}
+                    className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                      privacyMode === 'cloud'
+                        ? 'border-[var(--accent)]/60 bg-[var(--accent)]/8 ring-1 ring-[var(--accent)]/30'
+                        : 'border-[var(--border)] hover:border-[var(--accent)]/30 bg-[var(--surface-2)]'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${privacyMode === 'cloud' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'bg-[var(--surface-3)] text-[var(--text-4)]'}`}>
+                      <Cloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${privacyMode === 'cloud' ? 'text-[var(--accent)]' : 'text-[var(--text-2)]'}`}>Cloud AI</p>
+                      <p className="text-[10px] text-[var(--text-5)] font-mono">Gemini · Fastest · Default</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('privacy')}
+                    className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                      privacyMode === 'privacy'
+                        ? 'border-violet-500/60 bg-violet-500/8 ring-1 ring-violet-500/30'
+                        : 'border-[var(--border)] hover:border-violet-400/30 bg-[var(--surface-2)]'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${privacyMode === 'privacy' ? 'bg-violet-500/15 text-violet-400' : 'bg-[var(--surface-3)] text-[var(--text-4)]'}`}>
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${privacyMode === 'privacy' ? 'text-violet-300' : 'text-[var(--text-2)]'}`}>Privacy Mode</p>
+                      <p className="text-[10px] text-[var(--text-5)] font-mono">Local Ollama · Air-gapped</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Privacy setup wizard */}
+              {privacyMode === 'privacy' && (
+                <PrivacyModeSetup
+                  selectedModel={ollamaModel}
+                  onModelChange={setOllamaModel}
+                />
+              )}
+
+              {/* Cloud info */}
+              {privacyMode === 'cloud' && (
+                <div className="p-4 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 space-y-2">
+                  <p className="text-xs font-bold text-[var(--accent)] flex items-center gap-1.5">
+                    <Cloud className="w-3.5 h-3.5" /> Cloud AI Mode
+                  </p>
+                  <p className="text-xs text-[var(--text-3)] leading-relaxed">
+                    Analysis uses Gemini AI. Only file-path metadata (no source code) is sent to the cloud for AI processing.
+                    The deterministic analysis engine runs entirely on the ProjectLens backend.
+                  </p>
+                </div>
+              )}
+
+              {/* Save button */}
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+                {privacyMsg && (
+                  <span className={`text-xs font-mono flex items-center gap-1.5 ${privacyMsg.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {privacyMsg.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    {privacyMsg.text}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePrivacySave}
+                  disabled={privacySaving}
+                  className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-violet-500 hover:bg-violet-400 text-white shadow-[0_0_15px_-4px_#7c3aed] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {privacySaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                  Save Privacy Settings
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
+
   );
 };

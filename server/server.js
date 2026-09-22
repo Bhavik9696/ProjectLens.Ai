@@ -14,6 +14,7 @@ import projectsRoutes from './routes/projects.js';
 import paymentsRoutes from './routes/payments.js';
 import apiKeysRoutes from './routes/apiKeys.js';
 import v1Routes from './routes/v1.js';
+import privacyRoutes from './routes/privacy.js';
 import { sendTestNotification } from './services/slackService.js';
 import { startScheduler } from './services/schedulerService.js';
 import { requireAuth } from './middleware/auth.js';
@@ -89,6 +90,9 @@ app.use('/api/keys', apiKeysRoutes);
 
 // Public REST API v1 (JWT or API key auth)
 app.use('/api/v1', v1Routes);
+
+// Privacy Mode — proxy to ProjectLens Local Agent (requires auth)
+app.use('/api/privacy', privacyRoutes);
 
 // Test Slack webhook (used by Project Settings UI)
 app.post('/api/slack/test', requireAuth, async (req, res) => {

@@ -31,7 +31,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 // Credit gate: free credits are consumed first, then paid credits.
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { name, description, deadline, techStack, githubUrl } = req.body;
+    const { name, description, deadline, techStack, githubUrl, analysisMode, privacyConfig } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Project name is required' });
@@ -58,13 +58,15 @@ router.post('/', requireAuth, async (req, res) => {
 
     const now = new Date().toISOString();
     const doc = await Project.create({
-      _id:         `proj-${Date.now()}`,
-      userId:      req.user._id,
+      _id:          `proj-${Date.now()}`,
+      userId:       req.user._id,
       name,
-      description: description || '',
-      deadline:    deadline    || '',
-      techStack:   Array.isArray(techStack) ? techStack : [],
-      githubUrl:   githubUrl   || '',
+      description:  description  || '',
+      deadline:     deadline     || '',
+      techStack:    Array.isArray(techStack) ? techStack : [],
+      githubUrl:    githubUrl    || '',
+      analysisMode: analysisMode === 'privacy' ? 'privacy' : 'cloud',
+      privacyConfig: privacyConfig || {},
       createdAt:   now,
       updatedAt:   now,
       documents:   [],
@@ -118,6 +120,15 @@ router.put('/:id', requireAuth, async (req, res) => {
       if (project.githubUrl       !== undefined) update.githubUrl       = project.githubUrl;
       if (project.allowExternalAI !== undefined) update.allowExternalAI = Boolean(project.allowExternalAI);
       if (project.slackWebhookUrl !== undefined) update.slackWebhookUrl = project.slackWebhookUrl;
+      // Analysis mode
+      if (project.analysisMode !== undefined && ['cloud', 'privacy'].includes(project.analysisMode)) {
+        update.analysisMode = project.analysisMode;
+      }
+      if (project.privacyConfig !== undefined) {
+        if (project.privacyConfig.ollamaModel   !== undefined) update['privacyConfig.ollamaModel']   = project.privacyConfig.ollamaModel;
+        if (project.privacyConfig.localAgentUrl !== undefined) update['privacyConfig.localAgentUrl'] = project.privacyConfig.localAgentUrl;
+        if (project.privacyConfig.ollamaUrl     !== undefined) update['privacyConfig.ollamaUrl']     = project.privacyConfig.ollamaUrl;
+      }
       // Auto-schedule config — merge individual fields so partial updates work
       if (project.autoSchedule !== undefined) {
         const sched = project.autoSchedule;

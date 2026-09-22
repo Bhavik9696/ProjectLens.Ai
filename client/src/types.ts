@@ -1,5 +1,6 @@
 export type RequirementPriority = 'High' | 'Medium' | 'Low';
 export type RequirementCategory = 'Functional' | 'Non-Functional' | 'Deliverable' | 'Milestone';
+export type AnalysisMode = 'cloud' | 'privacy';
 export type ImplementationStatus =
   | 'Implemented'
   | 'Partially Implemented'
@@ -11,6 +12,7 @@ export type CriterionStatus = 'IMPLEMENTED' | 'PARTIAL' | 'MISSING' | 'NOT_VERIF
 export type ContradictionSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ProjectHealthStatus = 'Healthy' | 'Medium Risk' | 'High Risk';
 export type DocumentType = 'SRS' | 'Proposal' | 'Sprint Report' | 'Meeting Notes' | 'Design Doc' | 'Timeline' | 'Feature List';
+export type AnalysisMode = 'cloud' | 'privacy';
 
 // A lightweight snapshot of a single analysis run (stored in analysisHistory)
 export interface AnalysisStatusSnapshot {
@@ -36,6 +38,12 @@ export interface AutoScheduleConfig {
   lastError:  string | null;
 }
 
+export interface PrivacyConfig {
+  ollamaModel:    string;
+  localAgentUrl:  string;
+  ollamaUrl?:     string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -47,8 +55,11 @@ export interface Project {
   // the local deterministic summary and never calls an external AI
   // provider for this project.
   allowExternalAI?: boolean;
-  slackWebhookUrl?: string;      // optional — configured per project in Settings
-  autoSchedule?: AutoScheduleConfig; // optional — auto-analysis schedule
+  // Analysis mode: 'cloud' (Gemini, default) or 'privacy' (local Ollama)
+  analysisMode?:  AnalysisMode;
+  privacyConfig?: PrivacyConfig;
+  slackWebhookUrl?: string;
+  autoSchedule?: AutoScheduleConfig;
   createdAt: string;
   updatedAt: string;
 }

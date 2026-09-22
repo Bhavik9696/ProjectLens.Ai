@@ -262,6 +262,15 @@ const AutoScheduleSchema = new Schema(
   { _id: false }
 );
 
+const PrivacyConfigSchema = new Schema(
+  {
+    ollamaModel:   { type: String, default: 'llama3.1:8b' },
+    localAgentUrl: { type: String, default: 'http://localhost:3847' },
+    ollamaUrl:     { type: String, default: 'http://localhost:11434' },
+  },
+  { _id: false }
+);
+
 const ProjectSchema = new Schema(
   {
     // Use the same human-readable id format the original app generated
@@ -279,6 +288,12 @@ const ProjectSchema = new Schema(
     // project), the AI Copilot never calls an external AI provider — it
     // only uses the deterministic local summary. See copilotService.js.
     allowExternalAI: { type: Boolean, default: false },
+    // ── Analysis Mode ────────────────────────────────────────────────────────
+    // 'cloud'   = Gemini (default, existing behaviour)
+    // 'privacy' = local RAG + Ollama via ProjectLens Local Agent
+    analysisMode: { type: String, enum: ['cloud', 'privacy'], default: 'cloud' },
+    privacyConfig: { type: PrivacyConfigSchema, default: () => ({}) },
+    // ─────────────────────────────────────────────────────────────────────────
     ragAuditLog: { type: [RagAuditEntrySchema], default: [] },
     // Slack Incoming Webhook URL — optional, set per-project in Settings
     slackWebhookUrl: { type: String, default: '' },
@@ -315,7 +330,7 @@ const ProjectSchema = new Schema(
 // contract the React frontend already expects (project.id, not _id).
 ProjectSchema.methods.toIntelligenceData = function toIntelligenceData() {
   const obj = this.toObject();
-  const { _id, name, description, deadline, techStack, githubUrl, allowExternalAI, createdAt, updatedAt, ...rest } =
+  const { _id, name, description, deadline, techStack, githubUrl, allowExternalAI, analysisMode, privacyConfig, createdAt, updatedAt, ...rest } =
     obj;
 
   return {
@@ -327,6 +342,8 @@ ProjectSchema.methods.toIntelligenceData = function toIntelligenceData() {
       techStack,
       githubUrl,
       allowExternalAI: Boolean(allowExternalAI),
+      analysisMode:    analysisMode || 'cloud',
+      privacyConfig:   privacyConfig || { ollamaModel: 'llama3.1:8b', localAgentUrl: 'http://localhost:3847', ollamaUrl: 'http://localhost:11434' },
       slackWebhookUrl: rest.slackWebhookUrl || '',
       autoSchedule: rest.autoSchedule || { enabled: false, frequency: 'daily', lastRunAt: null, nextRunAt: null, lastStatus: null, lastError: null },
       createdAt,

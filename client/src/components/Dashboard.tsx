@@ -1,6 +1,7 @@
 import React from 'react';
 import { ProjectIntelligenceData } from '../types';
 import { ProjectHealthCard } from './ProjectHealthCard';
+import { PrivacyModeIndicator } from './PrivacyModeIndicator';
 import {
   BarChart,
   Bar,
@@ -120,6 +121,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
 
   return (
     <div className="space-y-6">
+      {/* Privacy Mode indicator — shown when project uses local Ollama */}
+      {data.project.analysisMode === 'privacy' && (
+        <PrivacyModeIndicator
+          ollamaModel={data.project.privacyConfig?.ollamaModel}
+        />
+      )}
+
       {/* ── Feature 3: Getting Started Checklist ─────────────────────────── */}
       {!allDone && (
         <div
