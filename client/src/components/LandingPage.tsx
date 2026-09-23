@@ -249,7 +249,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
     };
   }, []);
 
-  // ── Cursor glow ──────────────────────────────────────────────────────
+  // ── Cursor glow orb ──────────────────────────────────────────────────
   const glowRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
 
@@ -265,6 +265,65 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
     };
     window.addEventListener('mousemove', move, { passive: true });
     return () => { window.removeEventListener('mousemove', move); cancelAnimationFrame(rafRef.current); };
+  }, []);
+
+  // ── Custom cursor ────────────────────────────────────────────────────
+  const cursorDotRef  = useRef<HTMLDivElement>(null);
+  const cursorRingRef = useRef<HTMLDivElement>(null);
+  const cursorRaf     = useRef<number>(0);
+  // Ring lags behind the dot with spring interpolation
+  const ringPos = useRef({ x: -100, y: -100 });
+  const mousePos = useRef({ x: -100, y: -100 });
+
+  useEffect(() => {
+    if (window.matchMedia('(hover: none)').matches) return;
+
+    // Animate ring with lerp
+    const animateRing = () => {
+      const lerpFactor = 0.12;
+      ringPos.current.x += (mousePos.current.x - ringPos.current.x) * lerpFactor;
+      ringPos.current.y += (mousePos.current.y - ringPos.current.y) * lerpFactor;
+      if (cursorRingRef.current) {
+        cursorRingRef.current.style.transform =
+          `translate(${ringPos.current.x}px, ${ringPos.current.y}px) translate(-50%, -50%)`;
+      }
+      cursorRaf.current = requestAnimationFrame(animateRing);
+    };
+    cursorRaf.current = requestAnimationFrame(animateRing);
+
+    const onMove = (e: MouseEvent) => {
+      mousePos.current = { x: e.clientX, y: e.clientY };
+      if (cursorDotRef.current) {
+        cursorDotRef.current.style.transform =
+          `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+        cursorDotRef.current.style.opacity = '1';
+      }
+      if (cursorRingRef.current) cursorRingRef.current.style.opacity = '1';
+    };
+
+    const onEnterInteractive = () => {
+      cursorRingRef.current?.classList.add('cursor-ring--hover');
+      cursorDotRef.current?.classList.add('cursor-dot--hover');
+    };
+    const onLeaveInteractive = () => {
+      cursorRingRef.current?.classList.remove('cursor-ring--hover');
+      cursorDotRef.current?.classList.remove('cursor-dot--hover');
+    };
+
+    // Delegate hover detection via event-delegation on the document
+    const onOver = (e: MouseEvent) => {
+      const t = (e.target as Element)?.closest('a, button, [role="button"], input, select, textarea, label, [tabindex]');
+      if (t) onEnterInteractive(); else onLeaveInteractive();
+    };
+
+    window.addEventListener('mousemove', onMove, { passive: true });
+    document.addEventListener('mouseover', onOver, { passive: true });
+
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseover', onOver);
+      cancelAnimationFrame(cursorRaf.current);
+    };
   }, []);
 
   // ── Scroll reveal (IntersectionObserver) ────────────────────────────
@@ -368,7 +427,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
   // ─────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={tokens} className="min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)] overflow-x-clip">
+    <div style={tokens} className="lp-root min-h-screen bg-[var(--lens-bg)] text-[var(--lens-text)] font-sans antialiased selection:bg-[var(--lens-accent)]/30 selection:text-[var(--lens-accent)] overflow-x-clip">
 
       {/* ── Cursor glow orb ── */}
       <div
@@ -383,6 +442,49 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           filter: 'blur(40px)', pointerEvents: 'none', zIndex: 0,
           opacity: 0, willChange: 'transform',
           transition: 'transform 0.12s ease-out, opacity 0.4s ease',
+        }}
+      />
+
+      {/* ── Custom cursor: outer ring ── */}
+      <div
+        ref={cursorRingRef}
+        aria-hidden="true"
+        className="cursor-ring"
+        style={{
+          position: 'fixed', top: 0, left: 0,
+          width: 36, height: 36,
+          borderRadius: '50%',
+          border: isDark ? '1.5px solid rgba(214,255,63,0.75)' : '1.5px solid rgba(138,170,0,0.80)',
+          boxShadow: isDark
+            ? '0 0 10px rgba(214,255,63,0.35), inset 0 0 6px rgba(214,255,63,0.10)'
+            : '0 0 10px rgba(138,170,0,0.30), inset 0 0 6px rgba(138,170,0,0.08)',
+          pointerEvents: 'none',
+          zIndex: 9999,
+          opacity: 0,
+          willChange: 'transform',
+          transition: 'width 0.2s ease, height 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.4s ease',
+          backdropFilter: 'blur(0px)',
+        }}
+      />
+
+      {/* ── Custom cursor: inner sharp dot ── */}
+      <div
+        ref={cursorDotRef}
+        aria-hidden="true"
+        className="cursor-dot"
+        style={{
+          position: 'fixed', top: 0, left: 0,
+          width: 6, height: 6,
+          borderRadius: '50%',
+          background: isDark ? '#d6ff3f' : '#8aaa00',
+          boxShadow: isDark
+            ? '0 0 8px 2px rgba(214,255,63,0.9)'
+            : '0 0 8px 2px rgba(138,170,0,0.8)',
+          pointerEvents: 'none',
+          zIndex: 10000,
+          opacity: 0,
+          willChange: 'transform',
+          transition: 'width 0.15s ease, height 0.15s ease, opacity 0.4s ease',
         }}
       />
 

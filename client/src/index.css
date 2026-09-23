@@ -521,3 +521,57 @@
     transition: none !important;
   }
 }
+
+/* ── Custom Landing-Page Cursor ─────────────────────────────────────────
+   Hide the default pointer on the landing page root only.
+   The two cursor elements (ring + dot) are rendered via React refs.     */
+.lp-root,
+.lp-root * {
+  cursor: none !important;
+}
+
+/* Outer ring — lags behind with JS lerp */
+.cursor-ring {
+  /* base already set via inline styles; classes handle state changes */
+}
+
+/* Hover state: ring expands & brightens */
+.cursor-ring--hover {
+  width: 52px !important;
+  height: 52px !important;
+  box-shadow:
+    0 0 18px rgba(214, 255, 63, 0.55),
+    inset 0 0 10px rgba(214, 255, 63, 0.15) !important;
+  border-color: rgba(214, 255, 63, 1) !important;
+}
+
+/* Inner dot — snaps instantly to pointer */
+.cursor-dot {
+  /* base set via inline styles */
+}
+
+/* Hover state: dot shrinks to a pinpoint */
+.cursor-dot--hover {
+  width: 3px !important;
+  height: 3px !important;
+}
+
+/* No custom cursor on touch / coarse pointer devices */
+@media (hover: none), (pointer: coarse) {
+  .lp-root,
+  .lp-root * {
+    cursor: auto !important;
+  }
+
+  .cursor-ring,
+  .cursor-dot {
+    display: none !important;
+  }
+}
+
+/* Reduced-motion: skip the ring entirely, keep plain dot */
+@media (prefers-reduced-motion: reduce) {
+  .cursor-ring {
+    display: none !important;
+  }
+}

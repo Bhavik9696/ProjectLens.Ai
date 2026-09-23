@@ -10,12 +10,26 @@ dotenv.config();
 const app = express();
 const PORT = process.env.LOCAL_AGENT_PORT || 3847;
 
-// Only accept connections from localhost (the ProjectLens backend)
+// Only accept connections from localhost (the ProjectLens backend) or known tunnels
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || '')
+  .split(',').map(o => o.trim()).filter(Boolean);
+
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || ['http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5173', 'http://localhost:5174'].includes(origin)) {
+    if (!origin) return cb(null, true); // same-origin / curl
+    // Always allow localhost dev origins
+    if (['http://localhost:5000', 'http://127.0.0.1:5000',
+         'http://localhost:5173', 'http://localhost:5174'].includes(origin)) {
       return cb(null, true);
     }
+    // Allow ngrok tunnels (free + paid) and localtunnel
+    if (/\.ngrok-free\.app$/.test(origin) || /\.ngrok\.io$/.test(origin) ||
+        /\.ngrok-free\.dev$/.test(origin) || /\.loca\.lt$/.test(origin) ||
+        /\.trycloudflare\.com$/.test(origin)) {
+      return cb(null, true);
+    }
+    // Allow any extra origins configured via env
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
 }));
