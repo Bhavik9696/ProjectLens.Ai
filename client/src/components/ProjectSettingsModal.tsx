@@ -72,6 +72,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
   // ── Privacy Mode state ────────────────────────────────────────────────
   const [privacyMode, setPrivacyMode]       = useState<AnalysisMode>(project.project.analysisMode || 'cloud');
   const [ollamaModel, setOllamaModel]       = useState(project.project.privacyConfig?.ollamaModel || 'llama3.1:8b');
+  const [localAgentUrl, setLocalAgentUrl]   = useState(project.project.privacyConfig?.localAgentUrl || 'http://localhost:3847');
   const [privacySaving, setPrivacySaving]   = useState(false);
   const [privacyMsg, setPrivacyMsg]         = useState<{ ok: boolean; text: string } | null>(null);
   const [showModeWarning, setShowModeWarning] = useState(false);
@@ -202,7 +203,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
           analysisMode: privacyMode,
           privacyConfig: {
             ollamaModel,
-            localAgentUrl: 'http://localhost:3847',
+            localAgentUrl,
           },
         },
       });
@@ -752,6 +753,8 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
                 <PrivacyModeSetup
                   selectedModel={ollamaModel}
                   onModelChange={setOllamaModel}
+                  localAgentUrl={localAgentUrl}
+                  onAgentUrlChange={setLocalAgentUrl}
                 />
               )}
 

@@ -80,6 +80,8 @@ const INTEGRATIONS = [
   { icon: Server, label: 'Express' },
   { icon: Component, label: 'React' },
   { icon: Sparkles, label: 'Gemini AI' },
+  { icon: Lock, label: 'Ollama (Local AI)' },
+  { icon: EyeOff, label: 'Privacy Mode' },
 ];
 
 const FEATURES = [
@@ -103,6 +105,16 @@ const FEATURES = [
     title: 'AI Copilot',
     desc: 'Ask what shipped, what is missing, or what to prioritize next — every answer cites the exact evidence behind it.',
   },
+  {
+    icon: Lock,
+    title: 'Local AI — Privacy Mode',
+    desc: 'Run the entire analysis on your own machine using Ollama. Source code never leaves your environment — zero cloud dependency.',
+  },
+  {
+    icon: EyeOff,
+    title: 'Zero-Trust Data Handling',
+    desc: 'Choose Cloud AI for speed or Privacy Mode for complete data sovereignty. Switch per-project, not per-account.',
+  },
 ];
 
 const STEPS = [
@@ -113,11 +125,16 @@ const STEPS = [
   },
   {
     n: '02',
+    title: 'Choose your AI mode',
+    desc: 'Pick ☁️ Cloud AI for instant analysis via Gemini, or 🔐 Privacy Mode to run everything locally with Ollama — source code stays on your machine.',
+  },
+  {
+    n: '03',
     title: 'Connect the repo',
     desc: 'Point it at a GitHub repository. It reads the file tree, commits, pull requests, and open issues.',
   },
   {
-    n: '03',
+    n: '04',
     title: 'Get real coverage',
     desc: 'See exactly what is implemented, what is partial, and what was never built — with file-level evidence.',
   },
@@ -173,8 +190,10 @@ const ALL_FEATURES_INCLUDED = [
   'Coverage Engine',
   'Project Health Score',
   'AI Copilot (Gemini RAG)',
+  '🔐 Privacy Mode (Local Ollama)',
   'PDF Report Export',
   'Unlimited Team Members',
+  'Per-project AI Mode Switch',
 ];
 
 // Dynamically load the Razorpay checkout script
@@ -626,7 +645,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--lens-accent)] opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--lens-accent)]" />
               </span>
-              Live Requirement-to-Code Sync
+              Cloud AI · Local Ollama · Privacy Mode — Now Live
             </div>
           </div>
 
@@ -637,8 +656,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           </h1>
 
           <p className="hi-desc max-w-xl mx-auto text-center mt-6 text-[15px] sm:text-base text-[var(--lens-text-dim)] leading-relaxed">
-            ProjectLens AI compares your requirement documents against real GitHub code, so every
-            status update is backed by evidence — not a guess.
+            ProjectLens AI maps requirement documents to real GitHub code — backed by evidence, not
+            guesswork. Run it in the cloud or fully offline with local Ollama for complete data privacy.
           </p>
 
           <div className="hi-cta flex flex-col sm:flex-row items-center justify-center gap-4 mt-9">
@@ -663,7 +682,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             First 2 projects free — no credit card required
           </p>
           <div className="hi-trust flex items-center justify-center gap-3 mt-2.5">
-            {(['🔐\u00a0Privacy-first', 'RAG-powered', 'Secrets redacted'] as const).map((item, i, arr) => (
+            {(['🔐\u00a0Privacy-first', '🏠\u00a0Local Ollama', 'RAG-powered', 'Secrets redacted'] as const).map((item, i, arr) => (
               <React.Fragment key={item}>
                 <span
                   className="text-[11px] font-semibold tracking-wide"
@@ -732,9 +751,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           <h2 className="reveal text-3xl sm:text-4xl font-extrabold tracking-tight reveal-d1">
             Evidence, not status meetings
           </h2>
+          <p className="reveal reveal-d2 text-[14px] text-[var(--lens-text-dim)] mt-3 leading-relaxed">
+            Analyse via Gemini in the cloud, or spin up <span className="text-[var(--lens-accent)] font-semibold">Ollama locally</span> — your data, your rules.
+          </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {FEATURES.map(({ icon: Icon, title, desc }, i) => (
             <div
               key={title}
@@ -763,11 +785,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           <h2 className="reveal reveal-d1 text-3xl sm:text-4xl font-extrabold tracking-tight mb-5">
             Privacy-first AI analysis
             <br />
-            <span className="text-[var(--lens-accent)]">for your codebase</span>
+            <span className="text-[var(--lens-accent)]">cloud or fully local</span>
           </h2>
           <p className="reveal reveal-d2 max-w-2xl mx-auto text-[15px] text-[var(--lens-text-dim)] leading-relaxed">
-            ProjectLens AI uses privacy-first RAG to analyze only the repository evidence relevant to
-            each requirement. Your entire codebase is never blindly sent to an AI model.
+            Choose <strong className="text-[var(--lens-text)]">Cloud AI</strong> for speed or activate{' '}
+            <strong className="text-[var(--lens-accent)]">🔐 Privacy Mode</strong> to run the entire
+            pipeline on your own machine with Ollama — source code never leaves your environment.
+            Either way, secrets are redacted and only relevant evidence reaches the model.
           </p>
         </div>
 
@@ -913,9 +937,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             <div className="flex flex-wrap gap-2 pt-1">
               {[
                 { emoji: '🔐', label: 'Privacy First' },
+                { emoji: '🏠', label: 'Local Ollama' },
                 { emoji: '🧠', label: 'RAG-Powered' },
                 { emoji: '🚫', label: 'Secret Redaction' },
                 { emoji: '📁', label: 'Evidence-Based' },
+                { emoji: '☁️', label: 'Cloud AI' },
               ].map(({ emoji, label }) => (
                 <span
                   key={label}
@@ -937,10 +963,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
       <section id="how-it-works" className="max-w-6xl mx-auto px-4 sm:px-6 py-24 scroll-mt-24">
         <div className="max-w-xl mb-12">
           <p className="reveal reveal-eyebrow text-[12px] font-mono tracking-[0.2em] text-[var(--lens-accent)] mb-3">THE FLOW</p>
-          <h2 className="reveal reveal-d1 text-3xl sm:text-4xl font-extrabold tracking-tight">Three steps to real coverage</h2>
+          <h2 className="reveal reveal-d1 text-3xl sm:text-4xl font-extrabold tracking-tight">Four steps to real coverage</h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {STEPS.map((step, i) => (
             <div key={step.n} className={`reveal reveal-d${i + 1} relative`}>
               <span className="font-mono text-[13px] text-[var(--lens-accent)]">{step.n}</span>
@@ -1198,7 +1224,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             </div>
             <span className="text-[13px] font-bold">ProjectLens AI</span>
           </div>
-          <p className="text-[12px] text-[var(--lens-text-dim)]">Requirement-to-code evidence for engineering teams.</p>
+          <p className="text-[12px] text-[var(--lens-text-dim)]">Requirement-to-code evidence — cloud or fully local — for engineering teams.</p>
         </div>
       </footer>
 

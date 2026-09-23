@@ -21,6 +21,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const [githubUrl, setGithubUrl]     = useState('https://github.com/company/new-app');
   const [analysisMode, setAnalysisMode] = useState<'cloud' | 'privacy'>('cloud');
   const [ollamaModel, setOllamaModel] = useState('llama3.1:8b');
+  const [localAgentUrl, setLocalAgentUrl] = useState('http://localhost:3847');
   const [privacyReady, setPrivacyReady] = useState(false);
 
   if (!isOpen) return null;
@@ -41,7 +42,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
       githubUrl,
       analysisMode,
       privacyConfig: analysisMode === 'privacy'
-        ? { ollamaModel, localAgentUrl: 'http://localhost:3847', ollamaUrl: 'http://localhost:11434' }
+        ? { ollamaModel, localAgentUrl, ollamaUrl: 'http://localhost:11434' }
         : undefined,
       createdAt:    new Date().toISOString(),
       updatedAt:    new Date().toISOString(),
@@ -147,6 +148,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               inline
               selectedModel={ollamaModel}
               onModelChange={setOllamaModel}
+              localAgentUrl={localAgentUrl}
+              onAgentUrlChange={setLocalAgentUrl}
               onReady={() => setPrivacyReady(true)}
               onCancel={() => { setAnalysisMode('cloud'); setPrivacyReady(false); }}
             />

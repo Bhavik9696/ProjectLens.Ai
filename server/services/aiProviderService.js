@@ -23,13 +23,13 @@ export const LocalOllamaProvider = {
   name: 'ollama-local',
   isConfigured() { return true; },
 
-  async analyze({ requirements, githubUrl, githubToken, ollamaModel, ollamaUrl }) {
-    const agentUrl = process.env.LOCAL_AGENT_URL || LOCAL_AGENT_URL;
+  async analyze({ requirements, githubUrl, githubToken, ollamaModel, ollamaUrl, agentUrl }) {
+    const resolvedAgentUrl = agentUrl || process.env.LOCAL_AGENT_URL || LOCAL_AGENT_URL;
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), LOCAL_AGENT_TIMEOUT_MS);
     let res;
     try {
-      res = await fetch(`${agentUrl}/analyze`, {
+      res = await fetch(`${resolvedAgentUrl}/analyze`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         signal:  controller.signal,
@@ -51,12 +51,12 @@ export const LocalOllamaProvider = {
     return res.json();
   },
 
-  async checkStatus() {
-    const agentUrl = process.env.LOCAL_AGENT_URL || LOCAL_AGENT_URL;
+  async checkStatus(agentUrl) {
+    const resolvedAgentUrl = agentUrl || process.env.LOCAL_AGENT_URL || LOCAL_AGENT_URL;
     try {
       const controller = new AbortController();
       const tid = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`${agentUrl}/health`, { signal: controller.signal });
+      const res = await fetch(`${resolvedAgentUrl}/health`, { signal: controller.signal });
       clearTimeout(tid);
       if (!res.ok) return { agent: false, ollama: false, status: 'agent_error' };
       return res.json();
@@ -65,10 +65,10 @@ export const LocalOllamaProvider = {
     }
   },
 
-  async listModels() {
-    const agentUrl = process.env.LOCAL_AGENT_URL || LOCAL_AGENT_URL;
+  async listModels(agentUrl) {
+    const resolvedAgentUrl = agentUrl || process.env.LOCAL_AGENT_URL || LOCAL_AGENT_URL;
     try {
-      const res = await fetch(`${agentUrl}/models`);
+      const res = await fetch(`${resolvedAgentUrl}/models`);
       if (!res.ok) return [];
       const data = await res.json();
       return data.models || [];

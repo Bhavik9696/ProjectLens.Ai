@@ -13,9 +13,10 @@ const router = Router();
 router.use(requireAuth);
 
 // GET /api/privacy/status
-router.get('/status', async (_req, res) => {
+router.get('/status', async (req, res) => {
   try {
-    const status = await LocalOllamaProvider.checkStatus();
+    const agentUrl = req.query.agentUrl || undefined;
+    const status = await LocalOllamaProvider.checkStatus(agentUrl);
     res.json(status);
   } catch (err) {
     res.status(503).json({ agent: false, ollama: false, status: 'error', detail: err.message });
@@ -23,9 +24,10 @@ router.get('/status', async (_req, res) => {
 });
 
 // GET /api/privacy/models
-router.get('/models', async (_req, res) => {
+router.get('/models', async (req, res) => {
   try {
-    const models = await LocalOllamaProvider.listModels();
+    const agentUrl = req.query.agentUrl || undefined;
+    const models = await LocalOllamaProvider.listModels(agentUrl);
     res.json({ models });
   } catch (err) {
     res.status(503).json({ models: [], error: err.message });
@@ -34,7 +36,7 @@ router.get('/models', async (_req, res) => {
 
 // POST /api/privacy/analyze
 router.post('/analyze', async (req, res) => {
-  const { githubUrl, githubToken, requirements, ollamaModel, ollamaUrl } = req.body;
+  const { githubUrl, githubToken, requirements, ollamaModel, ollamaUrl, localAgentUrl } = req.body;
   if (!githubUrl || !requirements) {
     return res.status(400).json({ error: 'githubUrl and requirements are required' });
   }
@@ -45,6 +47,7 @@ router.post('/analyze', async (req, res) => {
       requirements,
       ollamaModel: ollamaModel || 'llama3.1:8b',
       ollamaUrl:   ollamaUrl   || 'http://localhost:11434',
+      agentUrl:    localAgentUrl || undefined,
     });
     res.json(result);
   } catch (err) {

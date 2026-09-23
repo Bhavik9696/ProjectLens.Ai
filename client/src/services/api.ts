@@ -265,17 +265,19 @@ export interface PrivacyStatus {
   ollamaUrl?: string;
 }
 
-export async function checkPrivacyStatusApi(): Promise<PrivacyStatus> {
+export async function checkPrivacyStatusApi(localAgentUrl?: string): Promise<PrivacyStatus> {
   try {
-    return await apiFetch('/api/privacy/status');
+    const qs = localAgentUrl ? `?agentUrl=${encodeURIComponent(localAgentUrl)}` : '';
+    return await apiFetch(`/api/privacy/status${qs}`);
   } catch {
     return { agent: false, ollama: false, status: 'agent_offline' };
   }
 }
 
-export async function fetchPrivacyModelsApi(): Promise<{ models: string[] }> {
+export async function fetchPrivacyModelsApi(localAgentUrl?: string): Promise<{ models: string[] }> {
   try {
-    return await apiFetch('/api/privacy/models');
+    const qs = localAgentUrl ? `?agentUrl=${encodeURIComponent(localAgentUrl)}` : '';
+    return await apiFetch(`/api/privacy/models${qs}`);
   } catch {
     return { models: [] };
   }
@@ -285,9 +287,10 @@ export async function runPrivacyAnalysisApi(
   requirements: any[],
   implementationProfile: any,
   ollamaModel?: string,
+  localAgentUrl?: string,
 ): Promise<{ analysisResults: any[]; healthMetrics: any }> {
   return apiFetch('/api/privacy/analyze', {
     method: 'POST',
-    body: JSON.stringify({ requirements, implementationProfile, ollamaModel }),
+    body: JSON.stringify({ requirements, implementationProfile, ollamaModel, localAgentUrl }),
   });
 }

@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield, CheckCircle2, XCircle, Loader2, ExternalLink,
-  RefreshCw, ChevronDown, Lock,
+  RefreshCw, ChevronDown, Lock, Settings2,
 } from 'lucide-react';
 import { checkPrivacyStatusApi, fetchPrivacyModelsApi, PrivacyStatus } from '../services/api';
 
 interface PrivacyModeSetupProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
+  /** Custom local agent URL (for deployed server use) */
+  localAgentUrl?: string;
+  onAgentUrlChange?: (url: string) => void;
   /** Compact mode — used inline in NewProjectModal */
   compact?: boolean;
   /** Legacy callbacks (optional, kept for backward compat) */
@@ -29,11 +32,15 @@ type Step = 'install' | 'connect' | 'model' | 'ready';
 export const PrivacyModeSetup: React.FC<PrivacyModeSetupProps> = ({
   selectedModel,
   onModelChange,
+  localAgentUrl: localAgentUrlProp,
+  onAgentUrlChange,
   compact = false,
   onReady,
   onCancel,
   inline = false,
 }) => {
+  const [agentUrl, setAgentUrl]         = useState(localAgentUrlProp || 'http://localhost:3847');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus]           = useState<PrivacyStatus | null>(null);
   const [checking, setChecking]       = useState(false);
   const [models, setModels]           = useState<string[]>([]);
@@ -50,13 +57,13 @@ export const PrivacyModeSetup: React.FC<PrivacyModeSetupProps> = ({
   const checkConnection = useCallback(async () => {
     setChecking(true);
     try {
-      const s = await checkPrivacyStatusApi();
+      const s = await checkPrivacyStatusApi(agentUrl !== 'http://localhost:3847' ? agentUrl : undefined);
       setStatus(s);
       if (s.agent && s.ollama) {
         setCurrentStep('model');
         setModelsLoading(true);
         try {
-          const { models: m } = await fetchPrivacyModelsApi();
+          const { models: m } = await fetchPrivacyModelsApi(agentUrl !== 'http://localhost:3847' ? agentUrl : undefined);
           setModels(m);
           if (m.length > 0 && !m.includes(selectedModel)) onModelChange(m[0]);
         } catch {
@@ -73,7 +80,7 @@ export const PrivacyModeSetup: React.FC<PrivacyModeSetupProps> = ({
     } finally {
       setChecking(false);
     }
-  }, [selectedModel, onModelChange]);
+  }, [selectedModel, onModelChange, agentUrl]);
 
   useEffect(() => { checkConnection(); }, []);
 
@@ -160,6 +167,42 @@ export const PrivacyModeSetup: React.FC<PrivacyModeSetupProps> = ({
               <p className="text-[var(--text-2)]">ollama serve</p>
               <p className="text-[var(--text-4)] mt-1"># Terminal 2 — start Local Agent</p>
               <p className="text-[var(--text-2)]">cd local-agent &amp;&amp; npm start</p>
+            </div>
+
+            {/* Advanced: custom agent URL */}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(v => !v)}
+                className="flex items-center gap-1 text-[10px] text-[var(--text-4)] hover:text-[var(--text-2)] transition-colors cursor-pointer"
+              >
+                <Settings2 className="w-3 h-3" />
+                Advanced {showAdvanced ? '▲' : '▼'}
+              </button>
+              {showAdvanced && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-[10px] text-[var(--text-4)] font-mono">
+                    Agent URL — change if your server is deployed remotely and you're using a tunnel (e.g. ngrok)
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="url"
+                      value={agentUrl}
+                      onChange={(e) => {
+                        setAgentUrl(e.target.value);
+                        onAgentUrlChange?.(e.target.value);
+                      }}
+                      placeholder="http://localhost:3847"
+                      className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-[var(--text-1)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/40 placeholder:text-[var(--text-6)]"
+                    />
+                  </div>
+                  {agentUrl !== 'http://localhost:3847' && (
+                    <p className="text-[10px] text-[var(--warning)] font-mono">
+                      ⚡ Using custom agent URL — make sure your local agent is accessible at this address
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <button onClick={checkConnection} disabled={checking}
               className="mt-2 flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 rounded-lg border border-[var(--accent)]/40 text-[var(--accent)] hover:bg-[var(--accent)]/8 transition-colors disabled:opacity-50 cursor-pointer">
