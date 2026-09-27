@@ -3,7 +3,7 @@
 > **Evidence-first requirement-to-code analysis for software teams.**
 
 [![Live on GitHub](https://img.shields.io/badge/GitHub-Bhavik9696%2FProjectLens.Ai-181717?logo=github)](https://github.com/Bhavik9696/ProjectLens.Ai)
-[![Stack](https://img.shields.io/badge/Stack-React%20%7C%20Redux%20%7C%20Node.js%20%7C%20MongoDB%20%7C%20Gemini-4B9CD3)](https://github.com/Bhavik9696/ProjectLens.Ai)
+[![Stack](https://img.shields.io/badge/Stack-React%20%7C%20Redux%20%7C%20Node.js%20%7C%20MongoDB%20%7C%20Gemini%20%7C%20Ollama-4B9CD3)](https://github.com/Bhavik9696/ProjectLens.Ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -29,7 +29,7 @@ Requirement-Specific Retrieval      (per-requirement keyword + semantic search)
         ↓
 Secret Detection & Redaction        (API keys, .env files, credentials removed)
         ↓
-AI Reasoning                        (Gemini AI, per-requirement isolated context)
+AI Reasoning                        (Gemini AI or local Ollama — per-requirement isolated context)
         ↓
 Evidence Verification               (AI-cited files cross-checked against file tree)
         ↓
@@ -54,11 +54,18 @@ Confidence + Evidence + Missing Items + Contradictions
 | **Scope Creep Detection** | Identifies significant features in the codebase not mentioned in the requirements |
 | **Negative Evidence** | Reports what *should* exist but is missing — e.g., "password reset requires email delivery but no email service files found" |
 | **Test Evidence** | Reports whether test files exist per requirement |
+| **Privacy Mode (Local Agent)** | Run analysis entirely on your machine via Ollama — no source code leaves your system |
 | **Privacy-First RAG** | Only requirement-specific evidence is sent to AI — never the full repository |
 | **Secret Redaction** | API keys, passwords, JWT secrets, database URLs, private keys are redacted before AI processing |
 | **AI Copilot** | Ask "which requirements are missing?", "show evidence for REQ-005", "what should I build next?" — all answers cite verified evidence |
 | **Project Health Score** | Weighted composite: requirement coverage (40%) + implementation coverage (30%) + sprint progress (20%) + GitHub activity (10%) |
 | **Traceability Matrix** | Full RTM view with criteria breakdown, evidence drawer, contradiction warnings |
+| **Scheduled Auto-Analysis** | Configure daily or weekly automatic analysis runs with Slack notification on completion |
+| **Slack Integration** | Rich Block Kit notifications with delta scores, regression alerts, and high-priority gap summaries |
+| **Email Notifications** | Password reset, welcome, and analysis notification emails via Nodemailer |
+| **PDF Export** | One-click PDF report generation with jsPDF + AutoTable |
+| **REST API v1** | Programmatic access for CI/CD pipelines, supporting both JWT and `pl_live_` API key authentication |
+| **Command Palette** | `⌘K` / `Ctrl+K` keyboard-driven navigation across all app views |
 | **Credit-Based Pricing** | Razorpay-powered, per-project credits — no subscription |
 
 ---
@@ -81,7 +88,21 @@ Sensitive Data Redaction  (keys, passwords, secrets → [REDACTED])
 AI Analysis               (only verified, redacted evidence sent to Gemini)
 ```
 
-**What is protected:**
+### Privacy Mode (Full Local)
+
+With **Privacy Mode** enabled, the entire analysis runs through the **Local Agent** on your machine using **Ollama**. Zero source code is sent to external APIs.
+
+```
+Your Repository
+        ↓
+Local Agent (http://127.0.0.1:3847)
+        ↓
+Ollama (llama3.1:8b or any local model)
+        ↓
+Analysis Results → ProjectLens Backend → Dashboard
+```
+
+**What is protected (both modes):**
 - `.env` files, private keys, certificates are never sent to AI
 - API keys, passwords, JWT secrets, database URLs are automatically redacted
 - `node_modules`, `.git`, `dist`, `build` directories are excluded
@@ -89,7 +110,7 @@ AI Analysis               (only verified, redacted evidence sent to Gemini)
 - Only the minimum evidence needed per requirement is transmitted
 
 **What is NOT claimed:**
-- We do not claim "100% secure" or "your code never leaves your server" — the system sends redacted, relevant file path evidence to Gemini AI for semantic reasoning.
+- We do not claim "100% secure" or "your code never leaves your server" — the standard mode sends redacted, relevant file path evidence to Gemini AI for semantic reasoning.
 
 ---
 
@@ -97,13 +118,20 @@ AI Analysis               (only verified, redacted evidence sent to Gemini)
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, Lucide icons |
+| **Frontend** | React 19, TypeScript, Vite 6, Tailwind CSS v4, Lucide icons |
+| **Animations** | Lenis (smooth scroll), Spline (3D), micro-animation CSS |
+| **Charts** | Recharts |
 | **State Management** | Redux Toolkit (RTK) + RTK Query |
-| **Backend** | Node.js, Express.js (ESM) |
-| **Database** | MongoDB (Mongoose) |
-| **AI / LLM** | Google Gemini (via `@google/genai`) |
+| **Backend** | Node.js 18+, Express.js 4 (ESM) |
+| **Database** | MongoDB (Mongoose 8) |
+| **AI / LLM (Cloud)** | Google Gemini (`@google/genai` v2) |
+| **AI / LLM (Local)** | Ollama (llama3.1:8b or any compatible model) |
+| **PDF Generation** | jsPDF + jspdf-autotable |
 | **Payments** | Razorpay |
-| **Auth** | JWT + bcrypt |
+| **Auth** | JWT + bcryptjs |
+| **Email** | Nodemailer |
+| **Scheduling** | node-cron |
+| **Notifications** | Slack Incoming Webhooks (Block Kit) |
 | **GitHub** | GitHub REST API (file tree, commits, PRs, issues) |
 
 ---
@@ -160,7 +188,7 @@ For each requirement, `retrieveRelevantFiles` runs independently:
 
 ### 4. AI Analysis (Per-Requirement)
 
-Each requirement is sent to Gemini as an **isolated prompt** with only its own evidence:
+Each requirement is sent to the AI provider as an **isolated prompt** with only its own evidence:
 
 ```
 REQ-001 — User Password Reset
@@ -172,6 +200,10 @@ Deterministic criteria check: [token: FOUND, validation: FOUND, email: NOT_FOUND
 ```
 
 AI must **only cite files from the provided list** and evaluate each acceptance criterion independently.
+
+The AI provider is determined by the project's `analysisMode`:
+- `'cloud'` → **Gemini AI** (`aiProviderService.GeminiProvider`)
+- `'privacy'` → **Local Ollama** via the Local Agent (`aiProviderService.LocalOllamaProvider`)
 
 ### 5. Evidence Verification
 
@@ -213,55 +245,205 @@ No raw source code or commit messages with author identities are included in the
 
 ---
 
+## Local Agent (Privacy Mode)
+
+The `local-agent/` directory is a standalone Express server that runs entirely on your machine and proxies analysis requests to a local **Ollama** instance.
+
+### How It Works
+
+```
+ProjectLens Backend  →  POST /analyze  →  Local Agent (port 3847)
+                                                  ↓
+                                        Ollama (port 11434)
+                                                  ↓
+                              Analysis Results ← ← ← ← ← ← ←
+```
+
+### Local Agent Routes
+
+| Route | Method | Description |
+|---|---|---|
+| `/` | GET | Health ping — returns name, version, status |
+| `/health` | GET | Checks agent + Ollama connectivity |
+| `/models` | GET | Lists available Ollama models |
+| `/analyze` | POST | Runs full requirement analysis via Ollama |
+| `/retrieve` | POST | Fetches relevant file evidence for a requirement |
+
+### Security
+
+- Binds to `127.0.0.1` only — never exposed to the internet
+- Shared-secret auth: every request (except `/health`) must include `x-agent-secret` header
+- Accepts connections from localhost origins and configured ngrok/localtunnel/Cloudflare URLs
+
+---
+
+## REST API v1
+
+The public REST API (`/api/v1/*`) is designed for CI/CD integration and automation.
+
+**Authentication:** Bearer JWT token or `pl_live_` API key in the `Authorization` header.
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/v1/projects` | GET | List all projects (lightweight — no analysis data) |
+| `/api/v1/projects/:id` | GET | Full project with analysis results, health metrics, history |
+| `/api/v1/projects/:id/health` | GET | Health metrics only — ideal for CI/CD status gates |
+| `/api/v1/projects/:id/requirements` | GET | All requirements merged with their analysis status |
+| `/api/v1/projects/:id/history` | GET | Analysis run history (timestamps + scores) |
+
+All responses include the `X-ProjectLens-API-Version: v1` header.
+
+---
+
+## Scheduled Auto-Analysis
+
+Projects can opt in to **automatic scheduled analysis** via Project Settings.
+
+- **Frequency:** Daily (default) or weekly
+- **Schedule:** Controlled by `SCHEDULE_CRON` env var (default: `0 0 * * *` — midnight UTC)
+- **On completion:** Results are persisted to MongoDB, history is appended (last 20 runs kept), and a Slack notification is fired (if configured)
+- **Regression detection:** Slack message flags a regression when the health score drops since the last run
+
+---
+
+## Slack Integration
+
+Configure a **Slack Incoming Webhook** URL in Project Settings to receive rich notifications.
+
+Notification includes:
+- Overall health score + delta vs last run (e.g. `+4.2% ↑` or `-1.5% ↓`)
+- Health rating (Healthy / Medium Risk / High Risk)
+- Requirement coverage %
+- Breakdown: ✅ implemented · ⚡ partial · ❌ missing
+- Top 3 high-priority gaps
+- High-severity scope creep warning
+- Regression alert block (scheduled runs only)
+
+Use the **"Test Webhook"** button in Project Settings to validate the integration before relying on it.
+
+---
+
 ## Project Structure
 
 ```
 projectlens.ai(RAG)/
-├── client/                         # React + Vite frontend
+├── client/                             # React 19 + Vite 6 frontend
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tsconfig.json
 │   └── src/
-│       ├── components/             # 30+ UI components
-│       │   ├── LandingPage.tsx     # Landing page with Privacy section
-│       │   ├── Dashboard.tsx       # Project dashboard
-│       │   ├── CoverageAnalyzer.tsx# Requirement analysis view
-│       │   ├── TraceabilityMatrix.tsx # RTM with evidence drawer
-│       │   ├── AICopilotChat.tsx   # Copilot chat interface
-│       │   ├── GitHubConnector.tsx # GitHub repository connection
-│       │   └── DocumentUploader.tsx# SRS upload + requirement extraction
-│       ├── store/                  # Redux Toolkit state management
-│       │   ├── index.ts            # Root store (RootState, AppDispatch)
-│       │   ├── hooks.ts            # Typed useAppDispatch / useAppSelector
-│       │   ├── authSlice.ts        # Auth state + async thunks
-│       │   ├── notificationsSlice.ts # In-app notification list
-│       │   ├── projectsSlice.ts    # Project list + current project
-│       │   ├── uiSlice.ts          # View routing, tabs, modal flags
-│       │   ├── themeSlice.ts       # Dark / light theme with localStorage sync
-│       │   └── projectsApi.ts      # RTK Query — project CRUD with caching
-│       ├── contexts/               # Thin Redux shims (useAuth, useTheme, useNotifications)
-│       │   │                       # + standalone: ToastContext, CommandPaletteContext
-│       ├── services/api.ts         # API client (analysis, copilot, payments)
-│       └── types.ts                # TypeScript type definitions
+│       ├── App.tsx                     # Root component + view routing
+│       ├── main.tsx                    # Redux Provider + React entry
+│       ├── types.ts                    # TypeScript type definitions
+│       ├── index.css                   # Global styles + Tailwind v4
+│       ├── components/                 # 32 UI components
+│       │   ├── LandingPage.tsx         # Landing page with Privacy section
+│       │   ├── Dashboard.tsx           # Project dashboard
+│       │   ├── CoverageAnalyzer.tsx    # Requirement analysis view
+│       │   ├── TraceabilityMatrix.tsx  # RTM with evidence drawer
+│       │   ├── AICopilotChat.tsx       # Copilot chat interface
+│       │   ├── GitHubConnector.tsx     # GitHub repository connection
+│       │   ├── DocumentUploader.tsx    # SRS upload + requirement extraction
+│       │   ├── AnalysisHistory.tsx     # Historical run comparison
+│       │   ├── ScopeCreepPanel.tsx     # Scope creep detected items
+│       │   ├── RequirementDrawer.tsx   # Slide-out requirement detail
+│       │   ├── RequirementAIPanel.tsx  # Per-requirement AI deep dive
+│       │   ├── ProjectHealthCard.tsx   # Health score card
+│       │   ├── TestCoverageReport.tsx  # Test evidence report
+│       │   ├── ProjectSettingsModal.tsx# Full project settings (Slack, schedule, API keys)
+│       │   ├── ReportGeneratorModal.tsx# PDF export modal
+│       │   ├── PrivacyModeSetup.tsx    # Local agent / Ollama setup wizard
+│       │   ├── PrivacyModeIndicator.tsx# Status badge for privacy mode
+│       │   ├── CommandPalette.tsx      # ⌘K global command palette
+│       │   ├── DocumentPreviewModal.tsx# Uploaded document preview
+│       │   ├── BuyCreditsModal.tsx     # Razorpay credits purchase
+│       │   ├── NotificationPanel.tsx   # In-app notification list
+│       │   ├── OnboardingTour.tsx      # First-use guided tour
+│       │   ├── KeyboardShortcutsModal.tsx
+│       │   ├── Navbar.tsx
+│       │   ├── NewProjectModal.tsx
+│       │   ├── ProjectSearch.tsx
+│       │   ├── FloatingCopilot.tsx
+│       │   ├── SmoothScroll.tsx
+│       │   ├── SignInPage.tsx
+│       │   ├── SignUpPage.tsx
+│       │   ├── ForgotPasswordPage.tsx
+│       │   ├── ResetPasswordPage.tsx
+│       │   └── ui/                     # Low-level UI primitives
+│       ├── store/                      # Redux Toolkit state management
+│       │   ├── index.ts                # Root store (RootState, AppDispatch)
+│       │   ├── hooks.ts                # Typed useAppDispatch / useAppSelector
+│       │   ├── authSlice.ts            # Auth state + async thunks
+│       │   ├── notificationsSlice.ts   # In-app notification list
+│       │   ├── projectsSlice.ts        # Project list + current project
+│       │   ├── uiSlice.ts              # View routing, tabs, modal flags
+│       │   ├── themeSlice.ts           # Dark / light theme with localStorage sync
+│       │   └── projectsApi.ts          # RTK Query — project CRUD with caching
+│       ├── contexts/                   # Thin Redux shims (useAuth, useTheme, useNotifications)
+│       │   │                           # + standalone: ToastContext, CommandPaletteContext
+│       ├── hooks/                      # Custom React hooks
+│       └── services/api.ts             # API client (analysis, copilot, payments)
 │
-├── server/                         # Node.js + Express backend
-│   ├── server.js                   # Entry point
-│   ├── routes/                     # Express route handlers
+├── server/                             # Node.js + Express 4 backend (ESM)
+│   ├── server.js                       # Entry point + scheduler init
+│   ├── config/
+│   │   └── db.js                       # MongoDB connection
+│   ├── middleware/
+│   │   └── auth.js                     # JWT + API key auth middleware
 │   ├── models/
-│   │   └── Project.js              # MongoDB schema
+│   │   ├── Project.js                  # Main MongoDB schema (requirements, results, history)
+│   │   ├── User.js                     # User schema (credits, plan)
+│   │   ├── ApiKey.js                   # pl_live_ API key schema
+│   │   └── PasswordResetToken.js       # Password reset token schema
+│   ├── routes/
+│   │   ├── auth.js                     # Register, login, password reset
+│   │   ├── projects.js                 # Project CRUD
+│   │   ├── engine.js                   # Trigger analysis
+│   │   ├── github.js                   # GitHub proxy
+│   │   ├── documents.js                # Document upload + extraction
+│   │   ├── copilot.js                  # AI Copilot Q&A
+│   │   ├── payments.js                 # Razorpay order + webhook
+│   │   ├── apiKeys.js                  # API key management
+│   │   ├── privacy.js                  # Local agent proxy routes
+│   │   └── v1.js                       # Public REST API v1 (CI/CD)
 │   └── services/
-│       ├── engineService.js        # 6-stage evidence-based analysis pipeline
-│       ├── codeGraphService.js     # Code graph + per-requirement retrieval
-│       ├── documentService.js      # SRS parsing + requirement extraction
-│       ├── githubService.js        # GitHub API integration
-│       ├── ragService.js           # RAG index + retrieval for Copilot
-│       ├── copilotService.js       # Copilot answer generation
-│       ├── geminiService.js        # Gemini AI client
-│       └── heuristics.js           # Fallback extraction (no AI needed)
+│       ├── engineService.js            # 6-stage evidence-based analysis pipeline
+│       ├── codeGraphService.js         # Code graph + per-requirement retrieval
+│       ├── documentService.js          # SRS parsing + requirement extraction
+│       ├── githubService.js            # GitHub API integration
+│       ├── ragService.js               # RAG index + retrieval for Copilot
+│       ├── copilotService.js           # Copilot answer generation
+│       ├── aiProviderService.js        # Gemini / Ollama provider abstraction
+│       ├── geminiService.js            # Gemini AI client (with retry)
+│       ├── heuristics.js               # Fallback extraction (no AI needed)
+│       ├── email.js                    # Nodemailer email sender
+│       ├── pdfService.js               # PDF report generation
+│       ├── schedulerService.js         # node-cron auto-analysis scheduler
+│       └── slackService.js             # Slack Block Kit notification sender
 │
+├── local-agent/                        # Standalone privacy-mode agent (Ollama)
+│   ├── index.js                        # Express server (binds to 127.0.0.1:3847)
+│   ├── routes/
+│   │   ├── health.js                   # GET /health — agent + Ollama status
+│   │   ├── models.js                   # GET /models — list Ollama models
+│   │   ├── analyze.js                  # POST /analyze — full analysis via Ollama
+│   │   └── retrieve.js                 # POST /retrieve — evidence retrieval
+│   └── services/
+│       ├── localEngineService.js       # Local analysis pipeline (mirrors engineService)
+│       ├── localRag.js                 # Local RAG index for Copilot
+│       ├── ollamaService.js            # Ollama API client
+│       └── secretRedaction.js          # Secret redaction (same rules as cloud)
+│
+├── package.json                        # Root — concurrently dev scripts
+├── .gitignore
 └── README.md
 ```
 
 ---
 
 ## Environment Variables
+
+### Server (`server/.env`)
 
 ```env
 # MongoDB
@@ -277,9 +459,41 @@ JWT_SECRET=your_jwt_secret
 RAZORPAY_KEY_ID=rzp_...
 RAZORPAY_KEY_SECRET=your_secret
 
+# Nodemailer (email)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your@gmail.com
+EMAIL_PASS=your_app_password
+EMAIL_FROM=ProjectLens AI <no-reply@projectlens.ai>
+
+# Scheduled auto-analysis (optional — default: daily at midnight UTC)
+SCHEDULE_CRON=0 0 * * *
+
+# Local Agent (optional — default shown)
+LOCAL_AGENT_URL=http://127.0.0.1:3847
+
 # Server
 PORT=5000
 NODE_ENV=development
+```
+
+### Client (`client/.env`)
+
+```env
+VITE_API_URL=http://localhost:5000
+VITE_RAZORPAY_KEY_ID=rzp_...
+```
+
+### Local Agent (`local-agent/.env`)
+
+```env
+LOCAL_AGENT_PORT=3847
+LOCAL_AGENT_SECRET=projectlens-local-secret
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_DEFAULT_MODEL=llama3.1:8b
+
+# Optional: additional CORS origins (comma-separated)
+CORS_ORIGINS=https://your-tunnel.ngrok-free.app
 ```
 
 ---
@@ -287,10 +501,12 @@ NODE_ENV=development
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- MongoDB Atlas (or local)
-- Gemini API key (Google AI Studio)
-- Razorpay account (optional — for payments)
+
+- **Node.js 18+**
+- **MongoDB Atlas** (or local MongoDB)
+- **Gemini API key** (Google AI Studio) — for cloud mode
+- **Ollama** — for privacy/local mode (optional)
+- **Razorpay account** — for payments (optional)
 
 ### Installation
 
@@ -299,27 +515,43 @@ NODE_ENV=development
 git clone https://github.com/Bhavik9696/ProjectLens.Ai.git
 cd ProjectLens.Ai
 
-# Install server dependencies
-cd server
-npm install
+# Install all dependencies at once (from root)
+npm run install:all
 
-# Install client dependencies
-cd ../client
-npm install
+# Or install individually:
+cd server && npm install
+cd ../client && npm install
+cd ../local-agent && npm install  # only needed for privacy mode
 ```
 
 ### Running Locally
 
 ```bash
+# Option A — run both server and client from the root (recommended)
+npm run dev
+
+# Option B — run separately
 # Terminal 1 — Backend
 cd server
-node server.js
-# → API running on http://localhost:5000
+npm run dev            # nodemon hot-reload → http://localhost:5000
 
 # Terminal 2 — Frontend
 cd client
-npm run dev
-# → UI running on http://localhost:5173
+npm run dev            # Vite → http://localhost:5173
+
+# Terminal 3 — Local Agent (only if using Privacy Mode)
+cd local-agent
+npm run dev            # → http://127.0.0.1:3847
+```
+
+### Production Start
+
+```bash
+# Build frontend
+npm run build:client
+
+# Start backend
+npm run start:server
 ```
 
 ---
@@ -330,10 +562,12 @@ npm run dev
 2. **Create a project** — give it a name, deadline, and tech stack
 3. **Upload a requirements document** — SRS, proposal, sprint doc (PDF, DOCX, TXT, MD)
 4. **Connect a GitHub repository** — paste the public or private repo URL
-5. **Run analysis** — ProjectLens runs the full evidence pipeline
-6. **Review results** — see per-requirement status, evidence, criteria, contradictions
-7. **Ask the Copilot** — "what's missing?", "generate a sprint plan", "show REQ-003 evidence"
-8. **Export** — download a PDF report
+5. **Choose analysis mode** — Cloud (Gemini) or Privacy (local Ollama)
+6. **Run analysis** — ProjectLens runs the full evidence pipeline
+7. **Review results** — see per-requirement status, evidence, criteria, contradictions
+8. **Ask the Copilot** — "what's missing?", "generate a sprint plan", "show REQ-003 evidence"
+9. **Export** — download a PDF report or access results via the REST API v1
+10. **Set up auto-analysis** — configure daily/weekly runs with Slack notifications in Project Settings
 
 ---
 
@@ -348,20 +582,36 @@ npm run dev
 
 ---
 
-## Recent Changes
+## Changelog
 
-### Redux Toolkit Integration (v3)
+### v4 — Local Agent, REST API, Scheduler & Slack
 
-- **Centralized state management** — replaced 6 React Contexts with Redux Toolkit slices: `auth`, `notifications`, `projects`, `ui`, `theme`
-- **RTK Query** — project CRUD (fetch / create / save / delete) now uses RTK Query with automatic caching and cache invalidation; no more manual `useEffect` + `setIsLoading` patterns
-- **Backward-compatible shim pattern** — `useAuth()`, `useNotifications()`, `useTheme()` hooks preserved with identical public APIs; all 30 components required zero changes
-- **Redux DevTools support** — full action history and time-travel debugging available via the Redux DevTools browser extension
-- **Leaner `App.tsx`** — removed 15+ `useState` calls; all UI state (`activeTab`, modal flags, `selectedRequirement`, `view`) dispatched via typed Redux actions
-- **Deployment safe** — server, MongoDB, and environment variables completely untouched
+- **Local Agent** (`local-agent/`) — standalone Express + Ollama server for fully private, on-machine analysis
+- **AI Provider abstraction** (`aiProviderService.js`) — `GeminiProvider` / `LocalOllamaProvider` selected by `analysisMode` field; `engineService` is provider-agnostic
+- **Privacy Mode UI** — `PrivacyModeSetup.tsx` and `PrivacyModeIndicator.tsx` guide users through Ollama setup and show live agent status
+- **REST API v1** (`/api/v1/*`) — JWT + API key auth, 5 endpoints for CI/CD integration
+- **API Key management** — generate, list, revoke `pl_live_` API keys in Project Settings
+- **Scheduled Auto-Analysis** (`schedulerService.js`) — node-cron, configurable cron expression, up to 20 history snapshots per project
+- **Slack Integration** (`slackService.js`) — Block Kit rich messages, delta scoring, regression detection, scope creep warning, test webhook button
+- **Email service** (`email.js`) — Nodemailer: welcome email, password reset, notification emails
+- **Password Reset flow** — forgot-password → email token → reset page (`PasswordResetToken` model)
+- **PDF export** (`pdfService.js`) — jsPDF + AutoTable full project report
+- **Privacy routes** (`routes/privacy.js`) — backend proxies Local Agent status and model list to the frontend
+- **Command Palette** (`CommandPalette.tsx`) — `⌘K` / `Ctrl+K` keyboard-driven global navigation
 
 ---
 
-### Evidence-Based Analysis Pipeline (v2)
+### v3 — Redux Toolkit Integration
+
+- **Centralized state management** — replaced 6 React Contexts with Redux Toolkit slices: `auth`, `notifications`, `projects`, `ui`, `theme`
+- **RTK Query** — project CRUD (fetch / create / save / delete) now uses RTK Query with automatic caching and cache invalidation; no more manual `useEffect` + `setIsLoading` patterns
+- **Backward-compatible shim pattern** — `useAuth()`, `useNotifications()`, `useTheme()` hooks preserved with identical public APIs; all 30+ components required zero changes
+- **Redux DevTools support** — full action history and time-travel debugging available via the Redux DevTools browser extension
+- **Leaner `App.tsx`** — removed 15+ `useState` calls; all UI state (`activeTab`, modal flags, `selectedRequirement`, `view`) dispatched via typed Redux actions
+
+---
+
+### v2 — Evidence-Based Analysis Pipeline
 
 - **Per-requirement isolation**: Each requirement now gets its own AI prompt with its own retrieved evidence — no more shared context causing the same file (e.g. `Aside.jsx`) to appear for every requirement
 - **Tightened retrieval**: Path-segment keyword matching + minimum score threshold 2.0 eliminates false positives
@@ -370,12 +620,7 @@ npm run dev
 - **Evidence-quality confidence**: Confidence formula: file evidence (40%) + route evidence (20%) + test evidence (15%) + criteria satisfaction (20%) − negative evidence penalty
 - **Scope creep detection**: Identifies product features in the codebase not mentioned in requirements
 - **Improved Copilot RAG**: Status-indexed chunks, intent-based retrieval boosting, REQ-NNN direct lookup
-
-### Landing Page
-
-- Added **Privacy & Security** section between "What It Does" and "The Flow"
-- Added subtle privacy trust line in the hero section
-- Added "Privacy" link to the navigation bar
+- **Landing Page**: Added Privacy & Security section, privacy trust line in hero, "Privacy" nav link
 
 ---
 
