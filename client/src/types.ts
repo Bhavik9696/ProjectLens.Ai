@@ -12,7 +12,6 @@ export type CriterionStatus = 'IMPLEMENTED' | 'PARTIAL' | 'MISSING' | 'NOT_VERIF
 export type ContradictionSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ProjectHealthStatus = 'Healthy' | 'Medium Risk' | 'High Risk';
 export type DocumentType = 'SRS' | 'Proposal' | 'Sprint Report' | 'Meeting Notes' | 'Design Doc' | 'Timeline' | 'Feature List';
-export type AnalysisMode = 'cloud' | 'privacy';
 
 // A lightweight snapshot of a single analysis run (stored in analysisHistory)
 export interface AnalysisStatusSnapshot {

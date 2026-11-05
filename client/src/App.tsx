@@ -634,6 +634,9 @@ export default function App() {
             implementationProfile={currentProjectData.implementationProfile}
             expectedRequirements={currentProjectData.requirements}
             onAnalyzeRepo={handleAnalyzeRepo}
+            analysisMode={currentProjectData.project.analysisMode || 'cloud'}
+            ollamaModel={currentProjectData.project.privacyConfig?.ollamaModel}
+            localAgentUrl={currentProjectData.project.privacyConfig?.localAgentUrl}
           />
         )}
 

@@ -294,3 +294,15 @@ export async function runPrivacyAnalysisApi(
     body: JSON.stringify({ requirements, implementationProfile, ollamaModel, localAgentUrl }),
   });
 }
+
+export async function analyzeGithubRepoLocalApi(
+  githubUrl: string,
+  expectedRequirements: SoftwareRequirement[],
+  ollamaModel?: string,
+  localAgentUrl?: string,
+): Promise<ImplementationProfile> {
+  return apiFetch('/api/privacy/analyze', {
+    method: 'POST',
+    body: JSON.stringify({ githubUrl, requirements: expectedRequirements, ollamaModel, localAgentUrl }),
+  }) as Promise<ImplementationProfile>;
+}

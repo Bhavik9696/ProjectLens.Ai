@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ImplementationProfile } from '../types';
-import { analyzeGithubRepoApi } from '../services/api';
+import { analyzeGithubRepoApi, analyzeGithubRepoLocalApi } from '../services/api';
 import {
   GitBranch,
   GitCommit,
@@ -23,6 +23,9 @@ interface GitHubConnectorProps {
   implementationProfile: ImplementationProfile | null;
   expectedRequirements: any[];
   onAnalyzeRepo: (profile: ImplementationProfile) => void;
+  analysisMode?: 'cloud' | 'privacy';
+  ollamaModel?: string;
+  localAgentUrl?: string;
 }
 
 export const GitHubConnector: React.FC<GitHubConnectorProps> = ({
@@ -30,6 +33,9 @@ export const GitHubConnector: React.FC<GitHubConnectorProps> = ({
   implementationProfile,
   expectedRequirements,
   onAnalyzeRepo,
+  analysisMode = 'cloud',
+  ollamaModel,
+  localAgentUrl,
 }) => {
   const [repoUrlInput, setRepoUrlInput] = useState(githubUrl || '');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -42,7 +48,17 @@ export const GitHubConnector: React.FC<GitHubConnectorProps> = ({
 
     setIsAnalyzing(true);
     try {
-      const profile = await analyzeGithubRepoApi(repoUrlInput, expectedRequirements);
+      let profile: ImplementationProfile;
+      if (analysisMode === 'privacy') {
+        profile = await analyzeGithubRepoLocalApi(
+          repoUrlInput,
+          expectedRequirements,
+          ollamaModel,
+          localAgentUrl,
+        );
+      } else {
+        profile = await analyzeGithubRepoApi(repoUrlInput, expectedRequirements);
+      }
       onAnalyzeRepo(profile);
     } catch (err) {
       console.error('GitHub analysis failed', err);
