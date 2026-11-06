@@ -386,40 +386,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
 
       {/* Visualizations & Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Coverage Chart (2 cols) */}
-        <div className="lg:col-span-2 bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-[var(--text-1)] flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[var(--accent)]" />
-              Requirement Implementation Coverage by Module (%)
-            </h3>
-            <span className="text-[10px] font-mono uppercase font-bold text-[var(--accent)]/80 bg-[var(--accent)]/10 px-2 py-0.5 rounded border border-[var(--accent)]/20">Deterministic Metric</span>
-          </div>
-
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 60 }}>
-                <XAxis
-                  dataKey="name"
-                  stroke="#6a6a62"
-                  fontSize={10}
-                  tickLine={false}
-                  angle={-35}
-                  textAnchor="end"
-                  interval={0}
-                  tick={{ fill: '#9a9a92', fontSize: 10 }}
-                />
-                <YAxis stroke="#6a6a62" fontSize={11} domain={[0, 100]} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#131313', borderColor: 'rgba(214,255,63,0.2)', borderRadius: '12px', fontSize: '12px', color: '#f5f5f1' }}
-                  formatter={(value: any) => [`${value}%`, 'Coverage']}
-                />
-                <Bar dataKey="Coverage" fill="#d6ff3f" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
         {/* Status Distribution Pie */}
         <div className="lg:col-span-1 bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-4">
           <h3 className="text-sm font-bold text-[var(--text-1)] flex items-center gap-2">
