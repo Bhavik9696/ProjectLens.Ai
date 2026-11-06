@@ -99,13 +99,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
   const completedCount = checklistSteps.filter((s) => s.done).length;
   const allDone = completedCount === checklistSteps.length;
 
-  // Prepare chart data
-  const chartData = analysisResults.map((r) => ({
-    name: r.module,
-    Coverage: r.coveragePercent,
-    Expected: r.expectedComponents.length,
-    Found: r.foundComponents.length,
-  }));
+  // Prepare chart data — aggregate by module so each bar = one unique module
+  const chartData = (() => {
+    const moduleMap: Record<string, { total: number; count: number; found: number; expected: number }> = {};
+    analysisResults.forEach((r) => {
+      const mod = r.module || 'General';
+      if (!moduleMap[mod]) moduleMap[mod] = { total: 0, count: 0, found: 0, expected: 0 };
+      moduleMap[mod].total    += r.coveragePercent || 0;
+      moduleMap[mod].count    += 1;
+      moduleMap[mod].found    += r.foundComponents?.length    || 0;
+      moduleMap[mod].expected += r.expectedComponents?.length || 0;
+    });
+    return Object.entries(moduleMap).map(([mod, s]) => ({
+      name:     mod,
+      Coverage: Math.round(s.total / s.count),
+      Expected: s.expected,
+      Found:    s.found,
+    }));
+  })();
 
   const pieData = [
     { name: 'Implemented', value: analysisResults.filter((r) => r.status === 'Implemented' || r.status === 'Completed').length, color: '#10b981' },
@@ -385,13 +396,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
             <span className="text-[10px] font-mono uppercase font-bold text-[var(--accent)]/80 bg-[var(--accent)]/10 px-2 py-0.5 rounded border border-[var(--accent)]/20">Deterministic Metric</span>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="name" stroke="#6a6a62" fontSize={11} tickLine={false} />
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 60 }}>
+                <XAxis
+                  dataKey="name"
+                  stroke="#6a6a62"
+                  fontSize={10}
+                  tickLine={false}
+                  angle={-35}
+                  textAnchor="end"
+                  interval={0}
+                  tick={{ fill: '#9a9a92', fontSize: 10 }}
+                />
                 <YAxis stroke="#6a6a62" fontSize={11} domain={[0, 100]} tickLine={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#131313', borderColor: 'rgba(214,255,63,0.2)', borderRadius: '12px', fontSize: '12px', color: '#f5f5f1' }}
+                  formatter={(value: any) => [`${value}%`, 'Coverage']}
                 />
                 <Bar dataKey="Coverage" fill="#d6ff3f" radius={[6, 6, 0, 0]} />
               </BarChart>
