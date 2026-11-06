@@ -3,10 +3,6 @@ import { ProjectIntelligenceData } from '../types';
 import { ProjectHealthCard } from './ProjectHealthCard';
 import { PrivacyModeIndicator } from './PrivacyModeIndicator';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
   Tooltip,
   ResponsiveContainer,
   PieChart,
@@ -98,25 +94,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
   ];
   const completedCount = checklistSteps.filter((s) => s.done).length;
   const allDone = completedCount === checklistSteps.length;
-
-  // Prepare chart data — aggregate by module so each bar = one unique module
-  const chartData = (() => {
-    const moduleMap: Record<string, { total: number; count: number; found: number; expected: number }> = {};
-    analysisResults.forEach((r) => {
-      const mod = r.module || 'General';
-      if (!moduleMap[mod]) moduleMap[mod] = { total: 0, count: 0, found: 0, expected: 0 };
-      moduleMap[mod].total    += r.coveragePercent || 0;
-      moduleMap[mod].count    += 1;
-      moduleMap[mod].found    += r.foundComponents?.length    || 0;
-      moduleMap[mod].expected += r.expectedComponents?.length || 0;
-    });
-    return Object.entries(moduleMap).map(([mod, s]) => ({
-      name:     mod,
-      Coverage: Math.round(s.total / s.count),
-      Expected: s.expected,
-      Found:    s.found,
-    }));
-  })();
 
   const pieData = [
     { name: 'Implemented', value: analysisResults.filter((r) => r.status === 'Implemented' || r.status === 'Completed').length, color: '#10b981' },
@@ -385,9 +362,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
       )}
 
       {/* Visualizations & Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Visualizations & Recent Activity Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution Pie */}
-        <div className="lg:col-span-1 bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6 shadow-sm space-y-4">
           <h3 className="text-sm font-bold text-[var(--text-1)] flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             Requirement Status Breakdown
@@ -423,80 +401,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
                 <span className="text-[var(--text-3)]">{p.name}: <strong className="text-[var(--text-1)] font-mono">{p.value}</strong></span>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* AI Recommendations & GitHub Feed Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* AI Executive Summary with AI ANALYSIS ENGINE badge */}
-        <div className="ai-copilot-panel p-6 space-y-4">
-          <div className="flex items-center gap-2 border-b border-[var(--accent)]/15 pb-3">
-            <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center border border-[var(--accent)]/30">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--text-1)]">AI Project Manager Insights & Guidance</h3>
-              <p className="text-[11px] text-[var(--text-4)]">Server-side Gemini RAG explanation of backend analysis</p>
-            </div>
-          </div>
-
-          <div className="space-y-3 text-xs text-[var(--text-3)] leading-relaxed">
-            <p className="bg-[var(--bg)]/90 p-3.5 rounded-xl border border-[var(--border)]">
-              {(() => {
-                const total = analysisResults.length;
-                const implemented = analysisResults.filter(r => r.status === 'Implemented' || r.status === 'Completed');
-                const partial = analysisResults.filter(r => r.status === 'Partially Implemented' || r.status === 'Partial');
-                const missing = analysisResults.filter(r => r.status === 'Missing');
-                const verifiedModules = Array.from(new Set(implemented.map(r => r.module))).slice(0, 2);
-                const missingModules  = Array.from(new Set(missing.map(r => r.module))).slice(0, 2);
-
-                if (total === 0) return 'Upload SRS documents and connect a GitHub repository to begin analysis.';
-
-                return (
-                  <>
-                    The project is currently tracking at{' '}
-                    <strong className="text-amber-400 font-mono">{healthMetrics.requirementCoverage}% Requirement Coverage</strong>
-                    {' '}across <strong className="text-[var(--text-1)]">{total} requirement{total !== 1 ? 's' : ''}</strong>.{' '}
-                    {verifiedModules.length > 0 && (
-                      <>
-                        {verifiedModules.map((m, i) => (
-                          <span key={m}>
-                            {i > 0 && ' and '}
-                            <strong className="text-emerald-400">{m}</strong>
-                          </span>
-                        ))}
-                        {' '}{verifiedModules.length === 1 ? 'is' : 'are'} {implemented.length === total ? '100%' : 'partially'} verified against code evidence.{' '}
-                      </>
-                    )}
-                    {missingModules.length > 0 && (
-                      <>
-                        <strong className="text-rose-400">{missing.length} requirement{missing.length !== 1 ? 's' : ''}</strong> {missing.length !== 1 ? 'are' : 'is'} missing implementation evidence.{' '}
-                      </>
-                    )}
-                    {partial.length > 0 && (
-                      <><strong className="text-amber-400">{partial.length}</strong> {partial.length !== 1 ? 'are' : 'is'} partially implemented.</>
-                    )}
-                  </>
-                );
-              })()}
-            </p>
-
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-mono font-bold text-[var(--accent)] block">Recommended PM Actions:</span>
-              {missingReqs.length > 0 ? (
-                <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-3)]">
-                  {missingReqs.map((r) => (
-                    <li key={r.requirementId}>
-                      <strong className="text-[var(--text-1)] font-mono">{r.requirementId} ({r.module}):</strong>{' '}
-                      {r.recommendation || `Implement missing components for ${r.requirementTitle}.`}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-emerald-400 font-medium">✅ All requirements are implemented — no actions needed.</p>
-              )}
-            </div>
           </div>
         </div>
 
