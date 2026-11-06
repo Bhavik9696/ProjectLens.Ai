@@ -477,19 +477,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigateTab, freeP
 
           <div className="space-y-3 text-xs text-[var(--text-3)] leading-relaxed">
             <p className="bg-[var(--bg)]/90 p-3.5 rounded-xl border border-[var(--border)]">
-              The project is currently tracking at <strong className="text-amber-400 font-mono">{healthMetrics.requirementCoverage}% Requirement Coverage</strong>.
-              Core modules such as <strong className="text-emerald-400">Authentication</strong> and <strong className="text-emerald-400">Shopping Cart</strong> are 100% verified against code evidence.
+              {(() => {
+                const total = analysisResults.length;
+                const implemented = analysisResults.filter(r => r.status === 'Implemented' || r.status === 'Completed');
+                const partial = analysisResults.filter(r => r.status === 'Partially Implemented' || r.status === 'Partial');
+                const missing = analysisResults.filter(r => r.status === 'Missing');
+                const verifiedModules = Array.from(new Set(implemented.map(r => r.module))).slice(0, 2);
+                const missingModules  = Array.from(new Set(missing.map(r => r.module))).slice(0, 2);
+
+                if (total === 0) return 'Upload SRS documents and connect a GitHub repository to begin analysis.';
+
+                return (
+                  <>
+                    The project is currently tracking at{' '}
+                    <strong className="text-amber-400 font-mono">{healthMetrics.requirementCoverage}% Requirement Coverage</strong>
+                    {' '}across <strong className="text-[var(--text-1)]">{total} requirement{total !== 1 ? 's' : ''}</strong>.{' '}
+                    {verifiedModules.length > 0 && (
+                      <>
+                        {verifiedModules.map((m, i) => (
+                          <span key={m}>
+                            {i > 0 && ' and '}
+                            <strong className="text-emerald-400">{m}</strong>
+                          </span>
+                        ))}
+                        {' '}{verifiedModules.length === 1 ? 'is' : 'are'} {implemented.length === total ? '100%' : 'partially'} verified against code evidence.{' '}
+                      </>
+                    )}
+                    {missingModules.length > 0 && (
+                      <>
+                        <strong className="text-rose-400">{missing.length} requirement{missing.length !== 1 ? 's' : ''}</strong> {missing.length !== 1 ? 'are' : 'is'} missing implementation evidence.{' '}
+                      </>
+                    )}
+                    {partial.length > 0 && (
+                      <><strong className="text-amber-400">{partial.length}</strong> {partial.length !== 1 ? 'are' : 'is'} partially implemented.</>
+                    )}
+                  </>
+                );
+              })()}
             </p>
 
             <div className="space-y-2">
               <span className="text-[10px] uppercase font-mono font-bold text-[var(--accent)] block">Recommended PM Actions:</span>
-              <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-3)]">
-                {missingReqs.map((r) => (
-                  <li key={r.requirementId}>
-                    <strong className="text-[var(--text-1)] font-mono">{r.requirementId} ({r.module}):</strong> {r.recommendation}
-                  </li>
-                ))}
-              </ul>
+              {missingReqs.length > 0 ? (
+                <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-3)]">
+                  {missingReqs.map((r) => (
+                    <li key={r.requirementId}>
+                      <strong className="text-[var(--text-1)] font-mono">{r.requirementId} ({r.module}):</strong>{' '}
+                      {r.recommendation || `Implement missing components for ${r.requirementTitle}.`}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-emerald-400 font-medium">✅ All requirements are implemented — no actions needed.</p>
+              )}
             </div>
           </div>
         </div>
